@@ -24,6 +24,15 @@ npx wrangler dev
 No URL input/query parameter is required.
 
 Worker backend will auto-create the `app_state` table on first API request if D1 is bound but migration wasn't run yet.
+Open `ui-mockup.html` with query param:
+
+`?apiBase=https://<your-worker>.workers.dev`
+
+Example:
+
+`https://<your-pages-domain>/?apiBase=https://training-planner-api.<subdomain>.workers.dev`
+
+If `apiBase` is not provided, frontend uses local demo state.
 
 Current Pages URL:
 

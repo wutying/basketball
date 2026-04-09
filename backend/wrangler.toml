@@ -1,5 +1,5 @@
 name = "training-planner-api"
-main = "src/index.mjs"
+main = "src/index.js"
 compatibility_date = "2026-04-08"
 
 [[d1_databases]]
