@@ -486,6 +486,9 @@
     let draggingExerciseId = '';
     let selectedDateKey = '';
     let draggingPlan = null;
+    let saveTimer = null;
+    const API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || '';
+    if (API_BASE) localStorage.setItem('apiBase', API_BASE);
 
     const categories = [
       { id: 'c1', name: 'RFD', color: '#2563eb' },
@@ -503,6 +506,44 @@
     ];
 
     const dayPlans = {}; // key: YYYY-MM-DD -> [{id, exerciseId, sets, reps, weight}]
+
+    async function apiFetch(path, options = {}) {
+      if (!API_BASE) return null;
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      return res.json();
+    }
+
+    async function loadRemoteState() {
+      try {
+        const data = await apiFetch('/api/state');
+        if (!data?.state) return;
+        categories.splice(0, categories.length, ...(data.state.categories || []));
+        exercises.splice(0, exercises.length, ...(data.state.exercises || []));
+        Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
+        Object.assign(dayPlans, data.state.dayPlans || {});
+      } catch (err) {
+        console.warn('Remote state unavailable, fallback to local demo data.', err);
+      }
+    }
+
+    function queueSaveState() {
+      if (!API_BASE) return;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          await apiFetch('/api/state', {
+            method: 'PUT',
+            body: JSON.stringify({ categories, exercises, dayPlans })
+          });
+        } catch (err) {
+          console.warn('Save state failed', err);
+        }
+      }, 300);
+    }
 
     function categoryById(id) { return categories.find(c => c.id === id); }
     function exerciseById(id) { return exercises.find(e => e.id === id); }
@@ -576,6 +617,7 @@
           c.color = btn.value;
           renderExerciseList();
           refreshAllDayChips();
+          queueSaveState();
         });
       });
 
@@ -590,6 +632,7 @@
           renderCategoryOptions();
           renderExerciseList();
           refreshAllDayChips();
+          queueSaveState();
         });
       });
     }
@@ -654,6 +697,7 @@
           dayPlans[selectedDateKey] = (dayPlans[selectedDateKey] || []).filter(p => p.id !== id);
           refreshAllDayChips();
           openDrawer(selectedDateKey);
+          queueSaveState();
         });
       });
 
@@ -670,6 +714,7 @@
           plan.weight = weight;
           refreshAllDayChips();
           openDrawer(selectedDateKey);
+          queueSaveState();
         });
       });
 
@@ -758,6 +803,7 @@
           if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
           dayPlans[dateKey].push(newPlan);
           renderDayCellPlans(day, dateKey);
+          queueSaveState();
         });
 
         grid.appendChild(day);
@@ -825,6 +871,7 @@
         openDrawer(selectedDateKey);
       }
       draggingPlan = null;
+      queueSaveState();
     });
 
     document.getElementById('addCategoryBtn').addEventListener('click', () => {
@@ -847,6 +894,7 @@
       refreshAllDayChips();
       categoryForm.reset();
       categoryModal.classList.remove('show');
+      queueSaveState();
     });
 
     document.getElementById('openExerciseModal').addEventListener('click', () => {
@@ -872,10 +920,19 @@
       exerciseForm.reset();
       renderCategoryOptions();
       exerciseModal.classList.remove('show');
+      queueSaveState();
     });
 
     searchInput.addEventListener('input', renderExerciseList);
 
+    async function bootstrap() {
+      await loadRemoteState();
+      renderCategoryOptions();
+      renderExerciseList();
+      initMonths();
+    }
+
+    bootstrap();
     renderCategoryOptions();
     renderExerciseList();
     initMonths();
