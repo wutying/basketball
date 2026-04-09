@@ -36,6 +36,8 @@ async function ensureSchema(env) {
 async function loadState(env) {
   if (!env.DB) return memoryState;
   await ensureSchema(env);
+async function loadState(env) {
+  if (!env.DB) return memoryState;
   const row = await env.DB.prepare("SELECT state_json FROM app_state WHERE id = 1").first();
   if (!row) return { categories: [], exercises: [], dayPlans: {} };
   try {

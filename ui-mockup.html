@@ -186,6 +186,14 @@
       gap: 10px;
       flex-wrap: wrap;
     }
+    .api-config { display: inline-flex; align-items: center; gap: 6px; }
+    .api-config input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      min-width: 260px;
+    }
     .api-status {
       font-size: 12px;
       padding: 4px 8px;
@@ -195,6 +203,7 @@
     }
     .ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
     .warn-status { color: #b45309; border-color: #fcd34d; background: #fffbeb; }
+    }
     .months-scroll {
       overflow: auto;
       padding: 12px;
@@ -402,6 +411,13 @@
           <span>滾輪上下可連續查看月份；點日期可開啟當日課表抽屜（可編輯/刪除）</span>
           <span class="api-status" id="apiStatus">未連線</span>
         </div>
+          <div class="api-config">
+            <input id="apiBaseInput" placeholder="後端 API Base URL" />
+            <button class="btn" id="saveApiBaseBtn">套用</button>
+            <span class="api-status" id="apiStatus">未連線</span>
+          </div>
+        </div>
+        <div class="planner-head">滾輪上下可連續查看月份；點日期可開啟當日課表抽屜（可編輯/刪除）</div>
         <div class="months-scroll" id="monthsScroll"></div>
       </section>
 
@@ -496,6 +512,8 @@
     const exerciseForm = document.getElementById('exerciseForm');
     const categoryModal = document.getElementById('categoryModal');
     const categoryForm = document.getElementById('categoryForm');
+    const apiBaseInput = document.getElementById('apiBaseInput');
+    const saveApiBaseBtn = document.getElementById('saveApiBaseBtn');
     const apiStatus = document.getElementById('apiStatus');
 
     const now = new Date();
@@ -506,6 +524,12 @@
     let draggingPlan = null;
     let saveTimer = null;
     const API_BASE = 'https://training-planner-api.im791196.workers.dev';
+    const DEFAULT_API_BASE = 'https://training-planner-api.im791196.workers.dev';
+    let API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || DEFAULT_API_BASE;
+    if (API_BASE) localStorage.setItem('apiBase', API_BASE);
+    apiBaseInput.value = API_BASE;
+    const API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || '';
+    if (API_BASE) localStorage.setItem('apiBase', API_BASE);
 
     const categories = [
       { id: 'c1', name: 'RFD', color: '#2563eb' },
@@ -562,6 +586,11 @@
       apiStatus.textContent = text;
       apiStatus.classList.remove('ok', 'warn-status');
       apiStatus.classList.add(isOk ? 'ok' : 'warn-status');
+    }
+
+      } catch (err) {
+        console.warn('Remote state unavailable, fallback to local demo data.', err);
+      }
     }
 
     function queueSaveState() {
@@ -959,6 +988,17 @@
 
     searchInput.addEventListener('input', renderExerciseList);
 
+    saveApiBaseBtn.addEventListener('click', async () => {
+      const next = apiBaseInput.value.trim().replace(/\/$/, '');
+      API_BASE = next;
+      if (API_BASE) localStorage.setItem('apiBase', API_BASE);
+      await loadRemoteState();
+      renderCategoryOptions();
+      renderExerciseList();
+      refreshAllDayChips();
+      await checkHealth();
+    });
+
     async function bootstrap() {
       await loadRemoteState();
       renderCategoryOptions();
@@ -968,6 +1008,12 @@
     }
 
     bootstrap();
+    }
+
+    bootstrap();
+    renderCategoryOptions();
+    renderExerciseList();
+    initMonths();
   </script>
 </body>
 </html>
