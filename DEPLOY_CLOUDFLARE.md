@@ -42,10 +42,16 @@ npx wrangler deploy
 `https://training-planner-api.im791196.workers.dev`
 
 前端會直接使用 `/api/state` 與後端同步，不需要再輸入 API URL。
+部署前端時，建議把 API base 設成：
+
+`https://<your-worker-subdomain>.workers.dev`
+
+頁面可用網址參數指定：
+
+`https://<pages-domain>/?apiBase=https://<worker-domain>`
+
+系統會用 `/api/state` 做讀寫。
 
 ## 4. 目前專案已知正式網址
 - 前端 Pages: `https://basketball-bjb.pages.dev/ui-mockup`
 - 後端 Worker（預設）: `https://training-planner-api.im791196.workers.dev`
-
-> 若要使用無副檔名網址（例如 `/ui-mockup`），請保留 `_redirects` 設定：
-> `/ui-mockup /ui-mockup.html 200`
