@@ -1,9 +1,6 @@
 name = "training-planner-api"
-<<<<<<< codex/design-training-menu-web-system-zs564u
-main = "src/index.mjs"
-=======
 main = "src/index.js"
->>>>>>> main
+
 compatibility_date = "2026-04-08"
 
 [[d1_databases]]
