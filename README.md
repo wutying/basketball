@@ -27,3 +27,6 @@ Example:
 
 If `apiBase` is not provided, frontend uses local demo state.
 
+Current Pages URL:
+
+`https://basketball-bjb.pages.dev/ui-mockup`

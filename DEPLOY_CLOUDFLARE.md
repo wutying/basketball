@@ -43,3 +43,7 @@ npx wrangler deploy
 `https://<pages-domain>/?apiBase=https://<worker-domain>`
 
 系統會用 `/api/state` 做讀寫。
+
+## 4. 目前專案已知正式網址
+- 前端 Pages: `https://basketball-bjb.pages.dev/ui-mockup`
+- 後端 Worker（預設）: `https://training-planner-api.im791196.workers.dev`
