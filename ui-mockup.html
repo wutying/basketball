@@ -203,6 +203,7 @@
     }
     .ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
     .warn-status { color: #b45309; border-color: #fcd34d; background: #fffbeb; }
+    }
     .months-scroll {
       overflow: auto;
       padding: 12px;
@@ -414,6 +415,7 @@
             <span class="api-status" id="apiStatus">未連線</span>
           </div>
         </div>
+        <div class="planner-head">滾輪上下可連續查看月份；點日期可開啟當日課表抽屜（可編輯/刪除）</div>
         <div class="months-scroll" id="monthsScroll"></div>
       </section>
 
@@ -523,6 +525,8 @@
     let API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || DEFAULT_API_BASE;
     if (API_BASE) localStorage.setItem('apiBase', API_BASE);
     apiBaseInput.value = API_BASE;
+    const API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || '';
+    if (API_BASE) localStorage.setItem('apiBase', API_BASE);
 
     const categories = [
       { id: 'c1', name: 'RFD', color: '#2563eb' },
@@ -579,6 +583,11 @@
       apiStatus.textContent = text;
       apiStatus.classList.remove('ok', 'warn-status');
       apiStatus.classList.add(isOk ? 'ok' : 'warn-status');
+    }
+
+      } catch (err) {
+        console.warn('Remote state unavailable, fallback to local demo data.', err);
+      }
     }
 
     function queueSaveState() {
@@ -996,6 +1005,12 @@
     }
 
     bootstrap();
+    }
+
+    bootstrap();
+    renderCategoryOptions();
+    renderExerciseList();
+    initMonths();
   </script>
 </body>
 </html>
