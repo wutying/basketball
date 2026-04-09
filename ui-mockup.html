@@ -409,6 +409,8 @@
       <section class="planner card">
         <div class="planner-head">
           <span>滾輪上下可連續查看月份；點日期可開啟當日課表抽屜（可編輯/刪除）</span>
+          <span class="api-status" id="apiStatus">未連線</span>
+        </div>
           <div class="api-config">
             <input id="apiBaseInput" placeholder="後端 API Base URL" />
             <button class="btn" id="saveApiBaseBtn">套用</button>
@@ -522,6 +524,8 @@
     let draggingPlan = null;
     let saveTimer = null;
     const API_BASE = 'https://training-planner-api.im791196.workers.dev';
+
+    const DEFAULT_CATEGORIES = [
     const DEFAULT_API_BASE = 'https://training-planner-api.im791196.workers.dev';
     let API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || DEFAULT_API_BASE;
     if (API_BASE) localStorage.setItem('apiBase', API_BASE);
@@ -535,6 +539,7 @@
       { id: 'c3', name: '力量', color: '#f97316' }
     ];
 
+    const DEFAULT_EXERCISES = [
     const exercises = [
       { id: 'e1', name: 'Box Jump', categoryId: 'c1', bodyPart: '下肢', sets: 4, reps: 5, weight: 0 },
       { id: 'e2', name: 'Med Ball Toss', categoryId: 'c1', bodyPart: '上肢', sets: 3, reps: 8, weight: 6 },
@@ -543,6 +548,9 @@
       { id: 'e5', name: 'Back Squat', categoryId: 'c3', bodyPart: '下肢', sets: 5, reps: 5, weight: 80 },
       { id: 'e6', name: 'RDL', categoryId: 'c3', bodyPart: '後鏈', sets: 4, reps: 8, weight: 70 }
     ];
+
+    const categories = structuredClone(DEFAULT_CATEGORIES);
+    const exercises = structuredClone(DEFAULT_EXERCISES);
 
     const dayPlans = {}; // key: YYYY-MM-DD -> [{id, exerciseId, sets, reps, weight}]
 
@@ -560,6 +568,16 @@
       try {
         const data = await apiFetch('/api/state');
         if (!data?.state) return;
+        const remoteCategories = Array.isArray(data.state.categories) ? data.state.categories : [];
+        const remoteExercises = Array.isArray(data.state.exercises) ? data.state.exercises : [];
+        const useRemote = remoteCategories.length > 0 && remoteExercises.length > 0;
+
+        categories.splice(0, categories.length, ...(useRemote ? remoteCategories : DEFAULT_CATEGORIES));
+        exercises.splice(0, exercises.length, ...(useRemote ? remoteExercises : DEFAULT_EXERCISES));
+        Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
+        Object.assign(dayPlans, data.state.dayPlans || {});
+        setApiStatus(true, '已連線後端');
+        if (!useRemote) queueSaveState();
         categories.splice(0, categories.length, ...(data.state.categories || []));
         exercises.splice(0, exercises.length, ...(data.state.exercises || []));
         Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
