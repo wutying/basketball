@@ -521,6 +521,7 @@
     let selectedDateKey = '';
     let draggingPlan = null;
     let saveTimer = null;
+    const API_BASE = 'https://training-planner-api.im791196.workers.dev';
     const DEFAULT_API_BASE = 'https://training-planner-api.im791196.workers.dev';
     let API_BASE = new URLSearchParams(window.location.search).get('apiBase') || localStorage.getItem('apiBase') || DEFAULT_API_BASE;
     if (API_BASE) localStorage.setItem('apiBase', API_BASE);

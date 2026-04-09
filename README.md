@@ -17,6 +17,13 @@ npx wrangler dev
 ```
 
 ## Frontend API mode
+`ui-mockup.html` is now hard-wired to:
+
+`https://training-planner-api.im791196.workers.dev`
+
+No URL input/query parameter is required.
+
+Worker backend will auto-create the `app_state` table on first API request if D1 is bound but migration wasn't run yet.
 Open `ui-mockup.html` with query param:
 
 `?apiBase=https://<your-worker>.workers.dev`

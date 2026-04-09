@@ -27,6 +27,9 @@ npx wrangler d1 create training_planner
 npx wrangler d1 execute training_planner --file=./migrations/0001_init.sql
 ```
 
+> 備註：目前 Worker 已內建自動初始化 `app_state` 資料表（第一次呼叫 API 會自動建立）。  
+> migration 仍建議保留執行，便於環境一致化與後續版本管理。
+
 部署 Worker：
 
 ```bash
@@ -34,6 +37,11 @@ npx wrangler deploy
 ```
 
 ## 3. 前端串 API
+目前 `ui-mockup.html` 已固定連到：
+
+`https://training-planner-api.im791196.workers.dev`
+
+前端會直接使用 `/api/state` 與後端同步，不需要再輸入 API URL。
 部署前端時，建議把 API base 設成：
 
 `https://<your-worker-subdomain>.workers.dev`
