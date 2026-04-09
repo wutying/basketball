@@ -26,3 +26,4 @@ Example:
 `https://<your-pages-domain>/?apiBase=https://training-planner-api.<subdomain>.workers.dev`
 
 If `apiBase` is not provided, frontend uses local demo state.
+
