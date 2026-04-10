@@ -411,10 +411,10 @@
           <a class="btn" href="analytics-standalone.html">開啟完整分析頁</a>
         </div>
         <div class="kpis">
-          <div class="kpi"><div class="label">總訓練次數</div><div class="value">28</div></div>
-          <div class="kpi ok"><div class="label">完成率</div><div class="value">86%</div></div>
-          <div class="kpi"><div class="label">平均 RPE</div><div class="value">7.2</div></div>
-          <div class="kpi warn"><div class="label">高負荷日</div><div class="value">6 天</div></div>
+          <div class="kpi"><div class="label">總訓練次數</div><div class="value" id="kpiTotalSessions">0</div></div>
+          <div class="kpi ok"><div class="label">完成率</div><div class="value" id="kpiCompletionRate">0%</div></div>
+          <div class="kpi"><div class="label">平均 RPE</div><div class="value" id="kpiAvgRpe">-</div></div>
+          <div class="kpi warn"><div class="label">高負荷日</div><div class="value" id="kpiHighLoadDays">0 天</div></div>
         </div>
       </section>
     </section>
@@ -522,7 +522,7 @@
     const apiStatus = document.getElementById('apiStatus');
 
     const now = new Date();
-    let startOffset = -4;
+    let startOffset = 0;
     let endOffset = 4;
     let draggingExerciseId = '';
     let selectedDateKey = '';
@@ -549,6 +549,22 @@
     const exercises = structuredClone(DEFAULT_EXERCISES);
 
     const dayPlans = {}; // key: YYYY-MM-DD -> [{id, exerciseId, sets, reps, weight}]
+
+    function updateInlineAnalytics() {
+      const allPlans = Object.values(dayPlans).flat();
+      const totalSessions = allPlans.length;
+      const completionRate = totalSessions > 0 ? '100%' : '0%';
+      const avgRpe = '-';
+      const highLoadDays = Object.values(dayPlans).filter((plans) => {
+        const totalWeight = plans.reduce((sum, p) => sum + (Number(p.sets) * Number(p.reps) * Number(p.weight)), 0);
+        return totalWeight >= 5000;
+      }).length;
+
+      document.getElementById('kpiTotalSessions').textContent = String(totalSessions);
+      document.getElementById('kpiCompletionRate').textContent = completionRate;
+      document.getElementById('kpiAvgRpe').textContent = avgRpe;
+      document.getElementById('kpiHighLoadDays').textContent = `${highLoadDays} 天`;
+    }
 
     async function apiFetch(path, options = {}) {
       if (!API_BASE) return null;
@@ -684,6 +700,7 @@
           c.color = btn.value;
           renderExerciseList();
           refreshAllDayChips();
+          updateInlineAnalytics();
           queueSaveState();
         });
       });
@@ -699,6 +716,7 @@
           renderCategoryOptions();
           renderExerciseList();
           refreshAllDayChips();
+          updateInlineAnalytics();
           queueSaveState();
         });
       });
@@ -715,6 +733,7 @@
       chip.draggable = true;
       chip.addEventListener('dragstart', (e) => {
         e.stopPropagation();
+        draggingExerciseId = '';
         draggingPlan = { planId, dateKey };
       });
       chip.addEventListener('dragend', () => {
@@ -864,18 +883,33 @@
         day.addEventListener('drop', (e) => {
           e.preventDefault();
           day.classList.remove('drop-target');
-          if (!draggingExerciseId) return;
-          const ex = exerciseById(draggingExerciseId);
-          const newPlan = {
-            id: `p${Date.now()}${Math.floor(Math.random() * 1000)}`,
-            exerciseId: ex.id,
-            sets: ex.sets,
-            reps: ex.reps,
-            weight: ex.weight
-          };
-          if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
-          dayPlans[dateKey].push(newPlan);
+          if (!draggingExerciseId && !draggingPlan) return;
+          if (draggingPlan) {
+            const { dateKey: fromDateKey, planId } = draggingPlan;
+            const fromPlans = dayPlans[fromDateKey] || [];
+            const planIndex = fromPlans.findIndex((p) => p.id === planId);
+            if (planIndex === -1) return;
+            const [movingPlan] = fromPlans.splice(planIndex, 1);
+            if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
+            dayPlans[dateKey].push(movingPlan);
+            draggingPlan = null;
+          } else {
+            const ex = exerciseById(draggingExerciseId);
+            const newPlan = {
+              id: `p${Date.now()}${Math.floor(Math.random() * 1000)}`,
+              exerciseId: ex.id,
+              sets: ex.sets,
+              reps: ex.reps,
+              weight: ex.weight
+            };
+            if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
+            dayPlans[dateKey].push(newPlan);
+          }
           renderDayCellPlans(day, dateKey);
+          updateInlineAnalytics();
+          if (selectedDateKey && dayDrawer.classList.contains('show')) {
+            openDrawer(selectedDateKey);
+          }
           queueSaveState();
         });
 
@@ -940,6 +974,7 @@
       const { dateKey, planId } = draggingPlan;
       dayPlans[dateKey] = (dayPlans[dateKey] || []).filter((p) => p.id !== planId);
       refreshAllDayChips();
+      updateInlineAnalytics();
       if (selectedDateKey === dateKey && dayDrawer.classList.contains('show')) {
         openDrawer(selectedDateKey);
       }
@@ -982,6 +1017,7 @@
       plan.weight = Number(planEditForm.weight.value);
       closePlanEditModal();
       refreshAllDayChips();
+      updateInlineAnalytics();
       openDrawer(selectedDateKey);
       queueSaveState();
     });
@@ -1019,6 +1055,7 @@
       renderCategoryOptions();
       renderExerciseList();
       initMonths();
+      updateInlineAnalytics();
       await checkHealth();
     }
 
