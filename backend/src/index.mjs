@@ -16,60 +16,59 @@ const memoryState = {
   dayPlans: {}
 };
 
-const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS categories (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS exercises (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  category_id TEXT NOT NULL,
-  body_part TEXT NOT NULL,
-  default_sets INTEGER NOT NULL,
-  default_reps INTEGER NOT NULL,
-  default_weight REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (category_id) REFERENCES categories(id)
-);
-
-CREATE TABLE IF NOT EXISTS plan_items (
-  id TEXT PRIMARY KEY,
-  date_key TEXT NOT NULL,
-  exercise_id TEXT NOT NULL,
-  sets INTEGER NOT NULL,
-  reps INTEGER NOT NULL,
-  weight REAL NOT NULL,
-  status TEXT NOT NULL DEFAULT 'planned',
-  notes TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (exercise_id) REFERENCES exercises(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_plan_items_date_key ON plan_items(date_key);
-CREATE INDEX IF NOT EXISTS idx_plan_items_exercise_id ON plan_items(exercise_id);
-`;
+const CREATE_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS exercises (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    body_part TEXT NOT NULL,
+    default_sets INTEGER NOT NULL,
+    default_reps INTEGER NOT NULL,
+    default_weight REAL NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS plan_items (
+    id TEXT PRIMARY KEY,
+    date_key TEXT NOT NULL,
+    exercise_id TEXT NOT NULL,
+    sets INTEGER NOT NULL,
+    reps INTEGER NOT NULL,
+    weight REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'planned',
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_plan_items_date_key ON plan_items(date_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_plan_items_exercise_id ON plan_items(exercise_id)`
+];
 
 let schemaReady = false;
 
 async function ensureSchema(env) {
   if (!env.DB || schemaReady) return;
   try {
-    await env.DB.exec(SCHEMA_SQL);
+    for (const sql of CREATE_STATEMENTS) {
+      await env.DB.prepare(sql).run();
+    }
   } catch (err) {
     // Recovery path for partially-migrated/broken schemas in existing D1 databases.
-    await env.DB.exec(`
-      DROP TABLE IF EXISTS plan_items;
-      DROP TABLE IF EXISTS exercises;
-      DROP TABLE IF EXISTS categories;
-    `);
-    await env.DB.exec(SCHEMA_SQL);
+    await env.DB.prepare("DROP TABLE IF EXISTS plan_items").run();
+    await env.DB.prepare("DROP TABLE IF EXISTS exercises").run();
+    await env.DB.prepare("DROP TABLE IF EXISTS categories").run();
+    for (const sql of CREATE_STATEMENTS) {
+      await env.DB.prepare(sql).run();
+    }
   }
   schemaReady = true;
 }
