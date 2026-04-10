@@ -24,7 +24,7 @@ npx wrangler d1 create training_planner
 執行 migration：
 
 ```bash
-npx wrangler d1 execute training_planner --file=./migrations/0001_init.sql
+npx wrangler d1 execute training_planner --file=./migrations/schema.sql
 ```
 
 > 備註：目前 Worker 已內建自動初始化 `app_state` 資料表（第一次呼叫 API 會自動建立）。  
@@ -55,3 +55,6 @@ npx wrangler deploy
 ## 4. 目前專案已知正式網址
 - 前端 Pages: `https://basketball-bjb.pages.dev/ui-mockup`
 - 後端 Worker（預設）: `https://training-planner-api.im791196.workers.dev`
+
+> 若要使用無副檔名網址（例如 `/ui-mockup`），請保留 `_redirects` 設定：
+> `/ui-mockup /ui-mockup.html 200`

@@ -120,10 +120,10 @@
     </section>
 
     <section class="kpis">
-      <div class="kpi"><div class="label">總訓練次數</div><div class="value">28</div></div>
-      <div class="kpi"><div class="label">完成率</div><div class="value" style="color:var(--ok)">86%</div></div>
-      <div class="kpi"><div class="label">平均 RPE</div><div class="value">7.2</div></div>
-      <div class="kpi"><div class="label">高負荷日</div><div class="value" style="color:var(--warn)">6 天</div></div>
+      <div class="kpi"><div class="label">總訓練次數</div><div class="value" id="kpiTotal">-</div></div>
+      <div class="kpi"><div class="label">總重量</div><div class="value" style="color:var(--ok)" id="kpiLoad">-</div></div>
+      <div class="kpi"><div class="label">平均重量</div><div class="value" id="kpiAvgWeight">-</div></div>
+      <div class="kpi"><div class="label">高負荷日</div><div class="value" style="color:var(--warn)" id="kpiHeavyDays">-</div></div>
     </section>
 
     <section class="charts">
@@ -138,13 +138,56 @@
         <thead>
           <tr><th>日期</th><th>動作</th><th>分類</th><th>組數</th><th>次數</th><th>重量(kg)</th><th>總重量(kg)</th><th>備註</th></tr>
         </thead>
-        <tbody>
-          <tr><td>2026-04-02</td><td>Box Jump</td><td>RFD</td><td>4</td><td>5</td><td>0</td><td>0</td><td>正常</td></tr>
-          <tr><td>2026-04-03</td><td>Drop Jump</td><td>SSC</td><td>3</td><td>6</td><td>0</td><td>0</td><td>落地穩定</td></tr>
-          <tr><td>2026-04-04</td><td>Back Squat</td><td>力量</td><td>5</td><td>5</td><td>100</td><td>2500</td><td>最後一組疲勞</td></tr>
-        </tbody>
+        <tbody id="analyticsRows"></tbody>
       </table>
     </section>
   </main>
+  <script>
+    const API_BASE = 'https://training-planner-api.im791196.workers.dev';
+    const rowsEl = document.getElementById('analyticsRows');
+
+    function fmt(num) {
+      return Number(num || 0).toLocaleString('zh-TW');
+    }
+
+    async function loadAnalytics() {
+      try {
+        const res = await fetch(`${API_BASE}/api/analytics`);
+        const data = await res.json();
+        const rows = data.rows || [];
+        const total = rows.length;
+        const totalLoad = rows.reduce((acc, r) => acc + Number(r.totalWeight || 0), 0);
+        const avgWeight = total ? rows.reduce((acc, r) => acc + Number(r.weight || 0), 0) / total : 0;
+        const heavyDays = new Set(rows.filter(r => Number(r.totalWeight || 0) >= 2000).map(r => r.date)).size;
+
+        document.getElementById('kpiTotal').textContent = fmt(total);
+        document.getElementById('kpiLoad').textContent = fmt(totalLoad) + ' kg';
+        document.getElementById('kpiAvgWeight').textContent = fmt(avgWeight.toFixed(1)) + ' kg';
+        document.getElementById('kpiHeavyDays').textContent = fmt(heavyDays) + ' 天';
+
+        if (!rows.length) {
+          rowsEl.innerHTML = '<tr><td colspan=\"8\">目前尚無資料，請先到排程頁新增課表。</td></tr>';
+          return;
+        }
+
+        rowsEl.innerHTML = rows.map(r => `
+          <tr>
+            <td>${r.date}</td>
+            <td>${r.exercise}</td>
+            <td>${r.category}</td>
+            <td>${r.sets}</td>
+            <td>${r.reps}</td>
+            <td>${r.weight}</td>
+            <td>${r.totalWeight}</td>
+            <td>${r.notes || ''}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        rowsEl.innerHTML = '<tr><td colspan=\"8\">讀取分析資料失敗，請確認 Worker 與 D1 是否正常。</td></tr>';
+      }
+    }
+
+    loadAnalytics();
+  </script>
 </body>
 </html>

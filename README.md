@@ -37,3 +37,5 @@ If `apiBase` is not provided, frontend uses local demo state.
 Current Pages URL:
 
 `https://basketball-bjb.pages.dev/ui-mockup`
+
+Pages rewrites are configured in `_redirects` so extensionless routes map to HTML files.
