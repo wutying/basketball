@@ -62,7 +62,19 @@ let schemaReady = false;
 
 async function ensureSchema(env) {
   if (!env.DB || schemaReady) return;
-  await env.DB.exec(SCHEMA_SQL);
+  try {
+    await env.DB.exec(SCHEMA_SQL);
+  } catch (err) {
+    // Recovery path for partially-migrated/broken schemas in existing D1 databases.
+    await env.DB.exec(`
+      PRAGMA foreign_keys = OFF;
+      DROP TABLE IF EXISTS plan_items;
+      DROP TABLE IF EXISTS exercises;
+      DROP TABLE IF EXISTS categories;
+      PRAGMA foreign_keys = ON;
+    `);
+    await env.DB.exec(SCHEMA_SQL);
+  }
   schemaReady = true;
 }
 
@@ -228,34 +240,38 @@ export default {
       });
     }
 
-    const url = new URL(request.url);
+    try {
+      const url = new URL(request.url);
 
-    if (url.pathname === "/api/health" && request.method === "GET") {
-      return json({ ok: true, service: "training-planner-api", date: new Date().toISOString() }, 200, origin);
-    }
-
-    if (url.pathname === "/api/state" && request.method === "GET") {
-      const state = await loadState(env);
-      return json({ ok: true, state }, 200, origin);
-    }
-
-    if (url.pathname === "/api/state" && request.method === "PUT") {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json({ ok: false, error: "Invalid JSON body" }, 400, origin);
+      if (url.pathname === "/api/health" && request.method === "GET") {
+        return json({ ok: true, service: "training-planner-api", date: new Date().toISOString() }, 200, origin);
       }
 
-      await saveState(env, payload);
-      return json({ ok: true }, 200, origin);
-    }
+      if (url.pathname === "/api/state" && request.method === "GET") {
+        const state = await loadState(env);
+        return json({ ok: true, state }, 200, origin);
+      }
 
-    if (url.pathname === "/api/analytics" && request.method === "GET") {
-      const data = await loadAnalytics(env);
-      return json({ ok: true, ...data }, 200, origin);
-    }
+      if (url.pathname === "/api/state" && request.method === "PUT") {
+        let payload;
+        try {
+          payload = await request.json();
+        } catch {
+          return json({ ok: false, error: "Invalid JSON body" }, 400, origin);
+        }
 
-    return json({ ok: false, error: "Not found" }, 404, origin);
+        await saveState(env, payload);
+        return json({ ok: true }, 200, origin);
+      }
+
+      if (url.pathname === "/api/analytics" && request.method === "GET") {
+        const data = await loadAnalytics(env);
+        return json({ ok: true, ...data }, 200, origin);
+      }
+
+      return json({ ok: false, error: "Not found" }, 404, origin);
+    } catch (err) {
+      return json({ ok: false, error: "Internal error", detail: String(err?.message || err) }, 500, origin);
+    }
   }
 };
