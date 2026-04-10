@@ -141,6 +141,7 @@ async function saveState(env, state) {
     ).bind(c.id, c.name, c.color || "#2563eb").run();
   }
 
+  const validExerciseIds = new Set();
   for (const e of exercises) {
     await env.DB.prepare(
       `INSERT INTO exercises
@@ -155,10 +156,12 @@ async function saveState(env, state) {
       Number(e.reps || 0),
       Number(e.weight || 0)
     ).run();
+    validExerciseIds.add(e.id);
   }
 
   for (const [dateKey, items] of Object.entries(dayPlans)) {
     for (const p of items || []) {
+      if (!validExerciseIds.has(p.exerciseId)) continue;
       await env.DB.prepare(
         `INSERT INTO plan_items
         (id, date_key, exercise_id, sets, reps, weight, status, updated_at)

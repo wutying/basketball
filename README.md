@@ -6,6 +6,7 @@ Cloudflare-ready fullstack prototype for training planning.
 - `ui-mockup.html`: Frontend planner (drag/drop, day drawer, category management, API sync)
 - `analytics-standalone.html`: Standalone analytics page
 - `backend/`: Cloudflare Workers API + D1 migration
+- `schema.sql`: D1 normalized schema (categories / exercises / plan_items)
 - `DEPLOY_CLOUDFLARE.md`: End-to-end deployment steps (GitHub -> Pages + Workers)
 
 ## Quick start (backend)
@@ -24,15 +25,6 @@ npx wrangler dev
 No URL input/query parameter is required.
 
 Worker backend will auto-create the `app_state` table on first API request if D1 is bound but migration wasn't run yet.
-Open `ui-mockup.html` with query param:
-
-`?apiBase=https://<your-worker>.workers.dev`
-
-Example:
-
-`https://<your-pages-domain>/?apiBase=https://training-planner-api.<subdomain>.workers.dev`
-
-If `apiBase` is not provided, frontend uses local demo state.
 
 Current Pages URL:
 

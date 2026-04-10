@@ -581,8 +581,10 @@
             method: 'PUT',
             body: JSON.stringify({ categories, exercises, dayPlans })
           });
+          setApiStatus(true, '已同步至後端');
         } catch (err) {
           console.warn('Save state failed', err);
+          setApiStatus(false, '儲存失敗，請檢查後端');
         }
       }, 300);
     }
