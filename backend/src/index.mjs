@@ -17,8 +17,6 @@ const memoryState = {
 };
 
 const SCHEMA_SQL = `
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -67,11 +65,9 @@ async function ensureSchema(env) {
   } catch (err) {
     // Recovery path for partially-migrated/broken schemas in existing D1 databases.
     await env.DB.exec(`
-      PRAGMA foreign_keys = OFF;
       DROP TABLE IF EXISTS plan_items;
       DROP TABLE IF EXISTS exercises;
       DROP TABLE IF EXISTS categories;
-      PRAGMA foreign_keys = ON;
     `);
     await env.DB.exec(SCHEMA_SQL);
   }
