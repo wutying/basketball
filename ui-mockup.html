@@ -481,6 +481,26 @@
       </form>
     </div>
   </div>
+  <div class="modal" id="planEditModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span id="planEditTitle">編輯課表</span>
+        <button class="btn" id="closePlanEditModal">關閉</button>
+      </div>
+      <form class="modal-body" id="planEditForm">
+        <input type="hidden" name="planId" />
+        <div class="grid2">
+          <div class="field"><label>組數</label><input required type="number" min="1" name="sets" /></div>
+          <div class="field"><label>下數(次數)</label><input required type="number" min="1" name="reps" /></div>
+        </div>
+        <div class="field"><label>重量(kg)</label><input required type="number" min="0" name="weight" /></div>
+        <div class="modal-foot">
+          <button type="button" class="btn" id="cancelPlanEdit">取消</button>
+          <button type="submit" class="btn primary">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script>
     const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
@@ -496,6 +516,9 @@
     const exerciseForm = document.getElementById('exerciseForm');
     const categoryModal = document.getElementById('categoryModal');
     const categoryForm = document.getElementById('categoryForm');
+    const planEditModal = document.getElementById('planEditModal');
+    const planEditTitle = document.getElementById('planEditTitle');
+    const planEditForm = document.getElementById('planEditForm');
     const apiStatus = document.getElementById('apiStatus');
 
     const now = new Date();
@@ -750,15 +773,7 @@
           const id = btn.dataset.editPlan;
           const plan = (dayPlans[selectedDateKey] || []).find(p => p.id === id);
           if (!plan) return;
-          const sets = Number(prompt('組數', String(plan.sets)) || plan.sets);
-          const reps = Number(prompt('下數', String(plan.reps)) || plan.reps);
-          const weight = Number(prompt('重量(kg)', String(plan.weight)) || plan.weight);
-          plan.sets = sets;
-          plan.reps = reps;
-          plan.weight = weight;
-          refreshAllDayChips();
-          openDrawer(selectedDateKey);
-          queueSaveState();
+          openPlanEditModal(plan);
         });
       });
 
@@ -769,6 +784,20 @@
     function closeDrawer() {
       overlay.classList.remove('show');
       dayDrawer.classList.remove('show');
+    }
+
+    function openPlanEditModal(plan) {
+      const ex = exerciseById(plan.exerciseId);
+      planEditTitle.textContent = `編輯課表｜${ex ? ex.name : '動作'}`;
+      planEditForm.planId.value = plan.id;
+      planEditForm.sets.value = String(plan.sets);
+      planEditForm.reps.value = String(plan.reps);
+      planEditForm.weight.value = String(plan.weight);
+      planEditModal.classList.add('show');
+    }
+
+    function closePlanEditModal() {
+      planEditModal.classList.remove('show');
     }
 
     function buildMonth(baseDate, offset) {
@@ -924,6 +953,8 @@
 
     document.getElementById('closeCategoryModal').addEventListener('click', () => categoryModal.classList.remove('show'));
     document.getElementById('cancelCategory').addEventListener('click', () => categoryModal.classList.remove('show'));
+    document.getElementById('closePlanEditModal').addEventListener('click', closePlanEditModal);
+    document.getElementById('cancelPlanEdit').addEventListener('click', closePlanEditModal);
 
     categoryForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -938,6 +969,20 @@
       refreshAllDayChips();
       categoryForm.reset();
       categoryModal.classList.remove('show');
+      queueSaveState();
+    });
+
+    planEditForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = planEditForm.planId.value;
+      const plan = (dayPlans[selectedDateKey] || []).find((p) => p.id === id);
+      if (!plan) return;
+      plan.sets = Number(planEditForm.sets.value);
+      plan.reps = Number(planEditForm.reps.value);
+      plan.weight = Number(planEditForm.weight.value);
+      closePlanEditModal();
+      refreshAllDayChips();
+      openDrawer(selectedDateKey);
       queueSaveState();
     });
 
