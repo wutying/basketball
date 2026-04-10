@@ -905,7 +905,7 @@
             if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
             dayPlans[dateKey].push(newPlan);
           }
-          renderDayCellPlans(day, dateKey);
+          refreshAllDayChips();
           updateInlineAnalytics();
           if (selectedDateKey && dayDrawer.classList.contains('show')) {
             openDrawer(selectedDateKey);
@@ -937,7 +937,7 @@
 
     function initMonths() {
       for (let i = startOffset; i <= endOffset; i++) appendMonth(i);
-      document.getElementById('currentMonthBlock')?.scrollIntoView({ block: 'start' });
+      monthsScroll.scrollTop = 0;
     }
 
     monthsScroll.addEventListener('scroll', () => {
