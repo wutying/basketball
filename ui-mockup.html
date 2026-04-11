@@ -432,7 +432,7 @@
   <div class="modal" id="exerciseModal">
     <div class="modal-card">
       <div class="modal-head">
-        <span>新增訓練動作</span>
+        <span id="exerciseModalTitle">新增訓練動作</span>
         <button class="btn" id="closeExerciseModal">關閉</button>
       </div>
       <form class="modal-body" id="exerciseForm">
@@ -454,7 +454,7 @@
         </div>
         <div class="modal-foot">
           <button type="button" class="btn" id="cancelExercise">取消</button>
-          <button type="submit" class="btn primary">儲存</button>
+          <button type="submit" class="btn primary" id="exerciseSubmitBtn">儲存</button>
         </div>
       </form>
     </div>
@@ -512,6 +512,8 @@
     const drawerTitle = document.getElementById('drawerTitle');
     const drawerContent = document.getElementById('drawerContent');
     const exerciseModal = document.getElementById('exerciseModal');
+    const exerciseModalTitle = document.getElementById('exerciseModalTitle');
+    const exerciseSubmitBtn = document.getElementById('exerciseSubmitBtn');
     const exerciseCategorySelect = document.getElementById('exerciseCategorySelect');
     const exerciseForm = document.getElementById('exerciseForm');
     const categoryModal = document.getElementById('categoryModal');
@@ -525,6 +527,8 @@
     let startOffset = 0;
     let endOffset = 4;
     let draggingExerciseId = '';
+    let draggingExerciseMoved = false;
+    let editingExerciseId = '';
     let selectedDateKey = '';
     let draggingPlan = null;
     let saveTimer = null;
@@ -646,6 +650,30 @@
         .join('');
     }
 
+    function openExerciseModalForCreate() {
+      editingExerciseId = '';
+      exerciseModalTitle.textContent = '新增訓練動作';
+      exerciseSubmitBtn.textContent = '儲存';
+      exerciseForm.reset();
+      renderCategoryOptions();
+      if (categories[0]) exerciseForm.categoryId.value = categories[0].id;
+      exerciseModal.classList.add('show');
+    }
+
+    function openExerciseModalForEdit(exercise) {
+      editingExerciseId = exercise.id;
+      exerciseModalTitle.textContent = '編輯訓練動作';
+      exerciseSubmitBtn.textContent = '更新';
+      renderCategoryOptions();
+      exerciseForm.name.value = exercise.name;
+      exerciseForm.categoryId.value = exercise.categoryId;
+      exerciseForm.bodyPart.value = exercise.bodyPart;
+      exerciseForm.sets.value = String(exercise.sets);
+      exerciseForm.reps.value = String(exercise.reps);
+      exerciseForm.weight.value = String(exercise.weight);
+      exerciseModal.classList.add('show');
+    }
+
     function renderExerciseList() {
       const keyword = searchInput.value.trim().toLowerCase();
       exerciseList.innerHTML = '';
@@ -685,8 +713,20 @@
             </span>
             <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
-          div.addEventListener('dragstart', () => { draggingExerciseId = ex.id; });
-          div.addEventListener('dragend', () => { draggingExerciseId = ''; });
+          div.addEventListener('dragstart', () => {
+            draggingExerciseId = ex.id;
+            draggingExerciseMoved = true;
+          });
+          div.addEventListener('dragend', () => {
+            setTimeout(() => {
+              draggingExerciseId = '';
+              draggingExerciseMoved = false;
+            }, 0);
+          });
+          div.addEventListener('click', () => {
+            if (draggingExerciseMoved) return;
+            openExerciseModalForEdit(ex);
+          });
           details.appendChild(div);
         });
         exerciseList.appendChild(details);
@@ -1023,25 +1063,44 @@
     });
 
     document.getElementById('openExerciseModal').addEventListener('click', () => {
-      exerciseModal.classList.add('show');
+      openExerciseModalForCreate();
     });
-    document.getElementById('closeExerciseModal').addEventListener('click', () => exerciseModal.classList.remove('show'));
-    document.getElementById('cancelExercise').addEventListener('click', () => exerciseModal.classList.remove('show'));
+    document.getElementById('closeExerciseModal').addEventListener('click', () => {
+      editingExerciseId = '';
+      exerciseModal.classList.remove('show');
+    });
+    document.getElementById('cancelExercise').addEventListener('click', () => {
+      editingExerciseId = '';
+      exerciseModal.classList.remove('show');
+    });
 
     exerciseForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const form = new FormData(exerciseForm);
-      const item = {
-        id: `e${Date.now()}`,
-        name: String(form.get('name')),
-        categoryId: String(form.get('categoryId')),
-        bodyPart: String(form.get('bodyPart')),
-        sets: Number(form.get('sets')),
-        reps: Number(form.get('reps')),
-        weight: Number(form.get('weight'))
-      };
-      exercises.push(item);
+      if (editingExerciseId) {
+        const target = exerciseById(editingExerciseId);
+        if (target) {
+          target.name = String(form.get('name'));
+          target.categoryId = String(form.get('categoryId'));
+          target.bodyPart = String(form.get('bodyPart'));
+          target.sets = Number(form.get('sets'));
+          target.reps = Number(form.get('reps'));
+          target.weight = Number(form.get('weight'));
+        }
+      } else {
+        const item = {
+          id: `e${Date.now()}`,
+          name: String(form.get('name')),
+          categoryId: String(form.get('categoryId')),
+          bodyPart: String(form.get('bodyPart')),
+          sets: Number(form.get('sets')),
+          reps: Number(form.get('reps')),
+          weight: Number(form.get('weight'))
+        };
+        exercises.push(item);
+      }
       renderExerciseList();
+      editingExerciseId = '';
       exerciseForm.reset();
       renderCategoryOptions();
       exerciseModal.classList.remove('show');
