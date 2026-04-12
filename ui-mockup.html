@@ -156,7 +156,6 @@
       font-size: 12px;
       gap: 8px;
     }
-    .exercise small { color: var(--muted); }
     .tag {
       color: #fff;
       border-radius: 999px;
@@ -657,7 +656,7 @@
         categories.splice(0, categories.length, ...(useRemote ? remoteCategories : DEFAULT_CATEGORIES));
         const normalizedExercises = (useRemote ? remoteExercises : DEFAULT_EXERCISES).map((e) => ({
           ...e,
-          bodyPart: e.bodyPart || '',
+          bodyPart: e.bodyPart ?? null,
           sets: e.sets ?? null,
           reps: e.reps ?? null,
           weight: e.weight ?? null,
@@ -674,7 +673,7 @@
             ...p,
             name: p.name || "",
             categoryId: p.categoryId || "",
-            bodyPart: p.bodyPart || "",
+            bodyPart: p.bodyPart ?? null,
             durationValue: p.durationValue ?? null,
             durationUnit: p.durationUnit || "",
             distanceValue: p.distanceValue ?? null,
@@ -741,7 +740,6 @@
 
     function exerciseMetaText(ex) {
       const parts = [];
-      if (ex.bodyPart) parts.push(ex.bodyPart);
       if (ex.sets !== null || ex.reps !== null || ex.weight !== null) {
         parts.push(`${ex.sets ?? '-'}組 x ${ex.reps ?? '-'}下｜${ex.weight ?? '-'}kg`);
       }
@@ -770,7 +768,6 @@
         const unitMap = { m: '公尺', km: '公里' };
         parts.push(`${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
       }
-      if (ex?.bodyPart) parts.push(ex.bodyPart);
       return parts.length ? parts.join('｜') : '查看';
     }
 
@@ -842,8 +839,7 @@
           div.dataset.exerciseId = ex.id;
           div.innerHTML = `
             <span>
-              ⠿ ${ex.name}<br />
-              <small>${exerciseMetaText(ex)}</small>
+              ⠿ ${ex.name}
             </span>
             <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
@@ -929,7 +925,7 @@
       chip.className = 'chip';
       chip.style.background = c?.color || '#2563eb';
       const planLikeExercise = {
-        bodyPart: plan.bodyPart || ex?.bodyPart || '',
+        bodyPart: plan.bodyPart ?? ex?.bodyPart ?? null,
         sets: plan.sets,
         reps: plan.reps,
         weight: plan.weight,
@@ -974,7 +970,7 @@
           const categoryId = plan.categoryId || ex?.categoryId || '';
           const c = categoryById(categoryId) || { name: '未分類', color: '#64748b' };
           const planLikeExercise = {
-            bodyPart: plan.bodyPart || ex?.bodyPart || '',
+            bodyPart: plan.bodyPart ?? ex?.bodyPart ?? null,
             sets: plan.sets,
             reps: plan.reps,
             weight: plan.weight,
@@ -1037,7 +1033,7 @@
         .join('');
       planEditForm.name.value = plan.name || ex?.name || '';
       planEditForm.categoryId.value = plan.categoryId || ex?.categoryId || categories[0]?.id || '';
-      planEditForm.bodyPart.value = plan.bodyPart || ex?.bodyPart || '';
+      planEditForm.bodyPart.value = plan.bodyPart ?? ex?.bodyPart ?? '';
       planEditForm.sets.value = plan.sets ?? '';
       planEditForm.reps.value = plan.reps ?? '';
       planEditForm.weight.value = plan.weight ?? '';
@@ -1133,7 +1129,7 @@
               exerciseId: ex.id,
               name: ex.name,
               categoryId: ex.categoryId,
-              bodyPart: ex.bodyPart || '',
+              bodyPart: ex.bodyPart ?? null,
               sets: ex.sets ?? 0,
               reps: ex.reps ?? 0,
               weight: ex.weight ?? 0,
@@ -1254,7 +1250,7 @@
       if (!plan) return;
       plan.name = String(planEditForm.name.value || plan.name || '');
       plan.categoryId = String(planEditForm.categoryId.value || plan.categoryId || '');
-      plan.bodyPart = String(planEditForm.bodyPart.value || '');
+      plan.bodyPart = planEditForm.bodyPart.value ? String(planEditForm.bodyPart.value) : null;
       plan.sets = numberOrNull(planEditForm.sets.value) ?? 0;
       plan.reps = numberOrNull(planEditForm.reps.value) ?? 0;
       plan.weight = numberOrNull(planEditForm.weight.value) ?? 0;
@@ -1290,7 +1286,7 @@
         if (target) {
           target.name = String(form.get('name'));
           target.categoryId = String(form.get('categoryId'));
-          target.bodyPart = String(form.get('bodyPart') || '');
+          target.bodyPart = form.get('bodyPart') ? String(form.get('bodyPart')) : null;
           target.sets = numberOrNull(form.get('sets'));
           target.reps = numberOrNull(form.get('reps'));
           target.weight = numberOrNull(form.get('weight'));
@@ -1304,7 +1300,7 @@
           id: `e${Date.now()}`,
           name: String(form.get('name')),
           categoryId: String(form.get('categoryId')),
-          bodyPart: String(form.get('bodyPart') || ''),
+          bodyPart: form.get('bodyPart') ? String(form.get('bodyPart')) : null,
           sets: numberOrNull(form.get('sets')),
           reps: numberOrNull(form.get('reps')),
           weight: numberOrNull(form.get('weight')),
