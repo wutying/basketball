@@ -757,19 +757,20 @@
     }
 
     function planChipMeta(plan, ex) {
+      const parts = [];
       const hasSetsReps = Number(plan.sets) > 0 && Number(plan.reps) > 0;
-      if (hasSetsReps) return `${plan.sets}x${plan.reps}`;
-      if (Number(plan.weight) > 0) return `${plan.weight}kg`;
+      if (hasSetsReps) parts.push(`${plan.sets}x${plan.reps}`);
+      if (Number(plan.weight) > 0) parts.push(`${plan.weight}kg`);
       if (ex?.durationValue !== null && ex?.durationValue !== undefined && ex?.durationUnit) {
         const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
-        return `${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`;
+        parts.push(`${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
       }
       if (ex?.distanceValue !== null && ex?.distanceValue !== undefined && ex?.distanceUnit) {
         const unitMap = { m: '公尺', km: '公里' };
-        return `${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`;
+        parts.push(`${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
       }
-      if (ex?.bodyPart) return ex.bodyPart;
-      return '查看';
+      if (ex?.bodyPart) parts.push(ex.bodyPart);
+      return parts.length ? parts.join('｜') : '查看';
     }
 
     function renderCategoryOptions() {
