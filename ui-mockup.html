@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>訓練菜單排程系統</title>
+  <link rel="icon" type="image/svg+xml" href="attached-logo.svg" />
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #fff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #dbe4f0;
+      --primary: #2563eb;
+      --hover: #eef4ff;
+      --ok: #16a34a;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    .header h1 { margin: 0; font-size: 18px; }
+    .header .actions { display: flex; gap: 8px; }
+    .btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-decoration: none;
+      color: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.danger { color: #b91c1c; border-color: #fecaca; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 12px;
+      height: calc(100vh - 64px);
+      padding: 12px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .left {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .left-head {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .left h2 { margin: 0; font-size: 16px; }
+    .search {
+      margin: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px;
+      width: calc(100% - 24px);
+    }
+    .exercise-list {
+      padding: 0 10px 10px;
+      overflow: auto;
+    }
+    .hint {
+      margin: -4px 12px 8px;
+      color: #b91c1c;
+      font-size: 12px;
+    }
+    .exercise-delete-active {
+      outline: 2px dashed #ef4444;
+      outline-offset: -2px;
+      background: #fff1f2;
+    }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #f8fbff;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .category-name { display: flex; align-items: center; gap: 8px; }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .category-tools { display: inline-flex; gap: 4px; }
+    .mini-btn {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 6px;
+      background: #fff;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .mini-color {
+      width: 28px;
+      height: 22px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .exercise {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: grab;
+      font-size: 12px;
+      gap: 8px;
+    }
+    .exercise small { color: var(--muted); }
+    .tag {
+      color: #fff;
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .right {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 12px;
+      min-height: 0;
+    }
+    .planner {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .planner-head {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .api-status {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
+    .warn-status { color: #b45309; border-color: #fcd34d; background: #fffbeb; }
+    .months-scroll {
+      overflow: auto;
+      padding: 12px;
+      height: 100%;
+      scroll-behavior: smooth;
+    }
+
+    .month-block {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 14px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .month-title {
+      padding: 10px 12px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      background: #f8fbff;
+    }
+    .week-head, .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .week-head div {
+      text-align: center;
+      padding: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .month-grid { grid-auto-rows: minmax(96px, auto); }
+    .day {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 6px;
+      min-height: 96px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .day:nth-child(7n) { border-right: none; }
+    .day.outside { background: #f8fafc; color: #94a3b8; }
+    .day.drop-target { background: var(--hover); outline: 2px dashed var(--primary); outline-offset: -2px; }
+    .exercise.drop-target { outline: 2px dashed var(--primary); background: #eef4ff; }
+    .date-label { font-size: 12px; margin-bottom: 4px; }
+    .chip {
+      display: inline-block;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 11px;
+      padding: 3px 8px;
+      margin: 2px 4px 0 0;
+    }
+
+    .analytics { padding-bottom: 12px; }
+    .analytics-head {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .kpis {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .kpi.ok .value { color: var(--ok); }
+    .kpi.warn .value { color: var(--warn); }
+    .category-month-stats { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 6px; }
+    .category-month-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text); }
+    .category-month-row .days { color: var(--muted); }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.35);
+      display: none;
+      z-index: 20;
+    }
+    .drawer {
+      position: fixed;
+      right: 0;
+      top: 0;
+      height: 100vh;
+      width: min(460px, 96vw);
+      background: #fff;
+      border-left: 1px solid var(--border);
+      box-shadow: -10px 0 30px rgba(15, 23, 42, 0.18);
+      transform: translateX(100%);
+      transition: transform .2s;
+      z-index: 21;
+      display: flex;
+      flex-direction: column;
+    }
+    .overlay.show { display: block; }
+    .drawer.show { transform: translateX(0); }
+    .drawer-head {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-content {
+      padding: 12px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+    }
+    .plan-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .plan-meta { color: var(--muted); font-size: 12px; }
+    .row { display: flex; gap: 6px; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.35);
+      z-index: 30;
+      padding: 16px;
+    }
+    .modal.show { display: flex; }
+    .modal-card {
+      width: min(600px, 96vw);
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+    }
+    .modal-body { padding: 12px; display: grid; gap: 8px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .field input, .field select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+    }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-foot {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    @media (max-width: 1000px) {
+      .layout { grid-template-columns: 1fr; }
+      .left { max-height: 360px; }
+      .kpis { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1><img src="attached-logo.svg" alt="logo" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;" /> 訓練菜單排程系統</h1>
+    <div class="actions">
+      <a class="btn" href="analytics-standalone.html">分析獨立頁</a>
+      <button class="btn primary" id="goCurrent">回到本月</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="left card">
+      <div class="left-head">
+        <h2>訓練動作</h2>
+        <div class="row">
+          <button class="btn" id="addCategoryBtn">+ 分類</button>
+          <button class="btn primary" id="openExerciseModal">+ 動作</button>
+        </div>
+      </div>
+      <input class="search" id="searchInput" placeholder="搜尋動作..." />
+      <div class="hint">提示：把日曆課表拖回此訓練動作區域即可刪除</div>
+      <div class="exercise-list" id="exerciseList"></div>
+    </aside>
+
+    <section class="right">
+      <section class="planner card">
+        <div class="planner-head">
+          <span>滾輪上下可連續查看月份；點日期可開啟當日課表抽屜（可編輯/刪除）</span>
+          <span class="api-status" id="apiStatus">未連線</span>
+        </div>
+        <div class="months-scroll" id="monthsScroll"></div>
+      </section>
+
+      <section class="analytics card">
+        <div class="kpis">
+          <div class="kpi"><div class="label">總訓練次數</div><div class="value" id="kpiTotalSessions">0</div></div>
+          <div class="kpi ok"><div class="label">完成率</div><div class="value" id="kpiCompletionRate">0%</div></div>
+          <div class="kpi"><div class="label">平均 RPE</div><div class="value" id="kpiAvgRpe">-</div></div>
+          <div class="kpi warn"><div class="label">高負荷日</div><div class="value" id="kpiHighLoadDays">0 天</div></div>
+        </div>
+        <div class="category-month-stats" id="monthlyCategoryStats"></div>
+      </section>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="dayDrawer">
+    <div class="drawer-head">
+      <strong id="drawerTitle">當日課表</strong>
+      <button class="btn" id="closeDrawer">關閉</button>
+    </div>
+    <div class="drawer-content" id="drawerContent"></div>
+  </aside>
+
+  <div class="modal" id="exerciseModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span id="exerciseModalTitle">新增訓練動作</span>
+        <button class="btn" id="closeExerciseModal">關閉</button>
+      </div>
+      <form class="modal-body" id="exerciseForm">
+        <div class="field">
+          <label>動作名稱</label>
+          <input required name="name" placeholder="例如：Back Squat" />
+        </div>
+        <div class="field">
+          <label>分類</label>
+          <select name="categoryId" id="exerciseCategorySelect"></select>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>訓練部位</label><input name="bodyPart" placeholder="例如：下肢" /></div>
+          <div class="field"><label>預設組數（選填）</label><input type="number" min="0" name="sets" /></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>預設下數(次數，選填)</label><input type="number" min="0" name="reps" /></div>
+          <div class="field"><label>預設重量(kg，選填)</label><input type="number" min="0" name="weight" /></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>時間（選填）</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="durationValue" placeholder="數值" />
+              <select name="durationUnit">
+                <option value="">單位</option>
+                <option value="seconds">秒</option>
+                <option value="minutes">分鐘</option>
+                <option value="hours">小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>距離（選填）</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="distanceValue" placeholder="數值" />
+              <select name="distanceUnit">
+                <option value="">單位</option>
+                <option value="m">公尺</option>
+                <option value="km">公里</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn" id="cancelExercise">取消</button>
+          <button type="submit" class="btn primary" id="exerciseSubmitBtn">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal" id="categoryModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span>新增分類</span>
+        <button class="btn" id="closeCategoryModal">關閉</button>
+      </div>
+      <form class="modal-body" id="categoryForm">
+        <div class="field">
+          <label>分類名稱</label>
+          <input required name="categoryName" placeholder="例如：恢復" />
+        </div>
+        <div class="field">
+          <label>分類顏色（色盤）</label>
+          <input required type="color" name="categoryColor" value="#22c55e" />
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn" id="cancelCategory">取消</button>
+          <button type="submit" class="btn primary">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal" id="planEditModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span id="planEditTitle">編輯課表</span>
+        <button class="btn" id="closePlanEditModal">關閉</button>
+      </div>
+      <form class="modal-body" id="planEditForm">
+        <input type="hidden" name="planId" />
+        <input type="hidden" name="exerciseId" />
+        <div class="field">
+          <label>動作名稱</label>
+          <input required name="name" />
+        </div>
+        <div class="field">
+          <label>分類</label>
+          <select name="categoryId" id="planEditCategorySelect"></select>
+        </div>
+        <div class="field">
+          <label>訓練部位</label>
+          <input name="bodyPart" />
+        </div>
+        <div class="grid2">
+          <div class="field"><label>組數</label><input type="number" min="0" name="sets" /></div>
+          <div class="field"><label>下數(次數)</label><input type="number" min="0" name="reps" /></div>
+        </div>
+        <div class="field"><label>重量(kg)</label><input type="number" min="0" name="weight" /></div>
+        <div class="grid2">
+          <div class="field">
+            <label>時間</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="durationValue" placeholder="數值" />
+              <select name="durationUnit">
+                <option value="">單位</option>
+                <option value="seconds">秒</option>
+                <option value="minutes">分鐘</option>
+                <option value="hours">小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>距離</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="distanceValue" placeholder="數值" />
+              <select name="distanceUnit">
+                <option value="">單位</option>
+                <option value="m">公尺</option>
+                <option value="km">公里</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn" id="cancelPlanEdit">取消</button>
+          <button type="submit" class="btn primary">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    const monthsScroll = document.getElementById('monthsScroll');
+    const exerciseList = document.getElementById('exerciseList');
+    const searchInput = document.getElementById('searchInput');
+    const overlay = document.getElementById('overlay');
+    const dayDrawer = document.getElementById('dayDrawer');
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerContent = document.getElementById('drawerContent');
+    const exerciseModal = document.getElementById('exerciseModal');
+    const exerciseModalTitle = document.getElementById('exerciseModalTitle');
+    const exerciseSubmitBtn = document.getElementById('exerciseSubmitBtn');
+    const exerciseCategorySelect = document.getElementById('exerciseCategorySelect');
+    const exerciseForm = document.getElementById('exerciseForm');
+    const categoryModal = document.getElementById('categoryModal');
+    const categoryForm = document.getElementById('categoryForm');
+    const planEditModal = document.getElementById('planEditModal');
+    const planEditTitle = document.getElementById('planEditTitle');
+    const planEditForm = document.getElementById('planEditForm');
+    const planEditCategorySelect = document.getElementById('planEditCategorySelect');
+    const apiStatus = document.getElementById('apiStatus');
+
+    const now = new Date();
+    let startOffset = 0;
+    let endOffset = 4;
+    let draggingExerciseId = '';
+    let draggingExerciseMoved = false;
+    let editingExerciseId = '';
+    let selectedDateKey = '';
+    let draggingPlan = null;
+    let saveTimer = null;
+    const API_BASE = 'https://training-planner-api.im791196.workers.dev';
+
+    const DEFAULT_CATEGORIES = [
+      { id: 'c1', name: 'RFD', color: '#2563eb' },
+      { id: 'c2', name: 'SSC', color: '#8b5cf6' },
+      { id: 'c3', name: '力量', color: '#f97316' }
+    ];
+
+    const DEFAULT_EXERCISES = [
+      { id: 'e1', name: 'Box Jump', categoryId: 'c1', bodyPart: '下肢', sets: 4, reps: 5, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e2', name: 'Med Ball Toss', categoryId: 'c1', bodyPart: '上肢', sets: 3, reps: 8, weight: 6, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e3', name: 'Drop Jump', categoryId: 'c2', bodyPart: '下肢', sets: 3, reps: 6, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e4', name: 'Pogo Jump', categoryId: 'c2', bodyPart: '小腿', sets: 4, reps: 20, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e5', name: 'Back Squat', categoryId: 'c3', bodyPart: '下肢', sets: 5, reps: 5, weight: 80, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e6', name: 'RDL', categoryId: 'c3', bodyPart: '後鏈', sets: 4, reps: 8, weight: 70, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' }
+    ];
+
+    const categories = structuredClone(DEFAULT_CATEGORIES);
+    const exercises = structuredClone(DEFAULT_EXERCISES);
+
+    const dayPlans = {}; // key: YYYY-MM-DD -> [{id, exerciseId, sets, reps, weight}]
+
+    function updateInlineAnalytics() {
+      const allPlans = Object.values(dayPlans).flat();
+      const totalSessions = allPlans.length;
+      const completionRate = totalSessions > 0 ? '100%' : '0%';
+      const avgRpe = '-';
+      const highLoadDays = Object.values(dayPlans).filter((plans) => {
+        const totalWeight = plans.reduce((sum, p) => sum + (Number(p.sets) * Number(p.reps) * Number(p.weight)), 0);
+        return totalWeight >= 5000;
+      }).length;
+
+      document.getElementById('kpiTotalSessions').textContent = String(totalSessions);
+      document.getElementById('kpiCompletionRate').textContent = completionRate;
+      document.getElementById('kpiAvgRpe').textContent = avgRpe;
+      document.getElementById('kpiHighLoadDays').textContent = `${highLoadDays} 天`;
+      updateMonthlyCategoryStats();
+    }
+
+    function updateMonthlyCategoryStats() {
+      const container = document.getElementById('monthlyCategoryStats');
+      if (!container) return;
+      const nowMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+      const daySetsByCategory = new Map();
+
+      for (const [dateKey, plans] of Object.entries(dayPlans)) {
+        if (!dateKey.startsWith(nowMonthPrefix)) continue;
+        for (const plan of plans || []) {
+          const ex = exerciseById(plan.exerciseId);
+          const categoryId = plan.categoryId || ex?.categoryId;
+          if (!categoryId) continue;
+          if (!daySetsByCategory.has(categoryId)) daySetsByCategory.set(categoryId, new Set());
+          daySetsByCategory.get(categoryId).add(dateKey);
+        }
+      }
+
+      const rows = categories
+        .map((c) => ({ name: c.name, days: daySetsByCategory.get(c.id)?.size || 0 }))
+        .filter((r) => r.days > 0)
+        .sort((a, b) => b.days - a.days);
+
+      if (!rows.length) {
+        container.innerHTML = '<div class="days">本月尚無分類訓練資料</div>';
+        return;
+      }
+
+      container.innerHTML = rows
+        .map((r) => `<div class="category-month-row"><span>${r.name}</span><span class="days">${r.days} 天</span></div>`)
+        .join('');
+    }
+
+    async function apiFetch(path, options = {}) {
+      if (!API_BASE) return null;
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      return res.json();
+    }
+
+    async function loadRemoteState() {
+      try {
+        const data = await apiFetch('/api/state');
+        if (!data?.state) return;
+        const remoteCategories = Array.isArray(data.state.categories) ? data.state.categories : [];
+        const remoteExercises = Array.isArray(data.state.exercises) ? data.state.exercises : [];
+        const useRemote = remoteCategories.length > 0 && remoteExercises.length > 0;
+
+        categories.splice(0, categories.length, ...(useRemote ? remoteCategories : DEFAULT_CATEGORIES));
+        const normalizedExercises = (useRemote ? remoteExercises : DEFAULT_EXERCISES).map((e) => ({
+          ...e,
+          bodyPart: e.bodyPart || '',
+          sets: e.sets ?? null,
+          reps: e.reps ?? null,
+          weight: e.weight ?? null,
+          durationValue: e.durationValue ?? null,
+          durationUnit: e.durationUnit || '',
+          distanceValue: e.distanceValue ?? null,
+          distanceUnit: e.distanceUnit || ''
+        }));
+        exercises.splice(0, exercises.length, ...normalizedExercises);
+        Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
+        const incomingPlans = data.state.dayPlans || {};
+        for (const [dateKey, items] of Object.entries(incomingPlans)) {
+          dayPlans[dateKey] = (items || []).map((p) => ({
+            ...p,
+            name: p.name || "",
+            categoryId: p.categoryId || "",
+            bodyPart: p.bodyPart || "",
+            durationValue: p.durationValue ?? null,
+            durationUnit: p.durationUnit || "",
+            distanceValue: p.distanceValue ?? null,
+            distanceUnit: p.distanceUnit || ""
+          }));
+        }
+        setApiStatus(true, '已連線後端');
+        if (!useRemote) queueSaveState();
+      } catch (err) {
+        console.warn('Remote state unavailable, fallback to local demo data.', err);
+        setApiStatus(false, '後端未連線，使用本地資料');
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const data = await apiFetch('/api/health');
+        setApiStatus(Boolean(data?.ok), data?.ok ? '已連線後端' : '後端狀態異常');
+      } catch {
+        setApiStatus(false, '後端未連線，使用本地資料');
+      }
+    }
+
+    function setApiStatus(isOk, text) {
+      apiStatus.textContent = text;
+      apiStatus.classList.remove('ok', 'warn-status');
+      apiStatus.classList.add(isOk ? 'ok' : 'warn-status');
+    }
+
+    function queueSaveState() {
+      if (!API_BASE) return;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          await apiFetch('/api/state', {
+            method: 'PUT',
+            body: JSON.stringify({ categories, exercises, dayPlans })
+          });
+          setApiStatus(true, '已同步至後端');
+        } catch (err) {
+          console.warn('Save state failed', err);
+          setApiStatus(false, '儲存失敗，請檢查後端');
+        }
+      }, 300);
+    }
+
+    function categoryById(id) { return categories.find(c => c.id === id); }
+    function exerciseById(id) { return exercises.find(e => e.id === id); }
+
+    function monthMeta(baseDate, monthOffset) {
+      const d = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    }
+
+    function makeDateKey(y, m, d) {
+      return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function numberOrNull(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function exerciseMetaText(ex) {
+      const parts = [];
+      if (ex.bodyPart) parts.push(ex.bodyPart);
+      if (Number(ex.sets) > 0 && Number(ex.reps) > 0) {
+        parts.push(`${ex.sets}組 x ${ex.reps}下`);
+      }
+      if (Number(ex.weight) > 0) {
+        parts.push(`${ex.weight}kg`);
+      }
+      if (Number(ex.durationValue) > 0 && ex.durationUnit) {
+        const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
+        parts.push(`時間：${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
+      }
+      if (Number(ex.distanceValue) > 0 && ex.distanceUnit) {
+        const unitMap = { m: '公尺', km: '公里' };
+        parts.push(`距離：${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
+      }
+      return parts.join('｜');
+    }
+
+    function planChipMeta(plan, ex) {
+      const parts = [];
+      const hasSetsReps = Number(plan.sets) > 0 && Number(plan.reps) > 0;
+      const hasWeight = Number(plan.weight) > 0;
+      if (hasSetsReps) parts.push(`${plan.sets}x${plan.reps}`);
+      if (hasWeight) parts.push(`${plan.weight}kg`);
+      if (Number(ex?.durationValue) > 0 && ex?.durationUnit) {
+        const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
+        parts.push(`${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
+      }
+      if (Number(ex?.distanceValue) > 0 && ex?.distanceUnit) {
+        const unitMap = { m: '公尺', km: '公里' };
+        parts.push(`${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
+      }
+      if (ex?.bodyPart) parts.push(ex.bodyPart);
+      return parts.length ? parts.join('｜') : '查看';
+    }
+
+    function renderCategoryOptions() {
+      exerciseCategorySelect.innerHTML = categories
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    }
+
+    function openExerciseModalForCreate() {
+      editingExerciseId = '';
+      exerciseModalTitle.textContent = '新增訓練動作';
+      exerciseSubmitBtn.textContent = '儲存';
+      exerciseForm.reset();
+      renderCategoryOptions();
+      if (categories[0]) exerciseForm.categoryId.value = categories[0].id;
+      exerciseModal.classList.add('show');
+    }
+
+    function openExerciseModalForEdit(exercise) {
+      editingExerciseId = exercise.id;
+      exerciseModalTitle.textContent = '編輯訓練動作';
+      exerciseSubmitBtn.textContent = '更新';
+      renderCategoryOptions();
+      exerciseForm.name.value = exercise.name;
+      exerciseForm.categoryId.value = exercise.categoryId;
+      exerciseForm.bodyPart.value = exercise.bodyPart;
+      exerciseForm.sets.value = exercise.sets ?? '';
+      exerciseForm.reps.value = exercise.reps ?? '';
+      exerciseForm.weight.value = exercise.weight ?? '';
+      exerciseForm.durationValue.value = exercise.durationValue ?? '';
+      exerciseForm.durationUnit.value = exercise.durationUnit || '';
+      exerciseForm.distanceValue.value = exercise.distanceValue ?? '';
+      exerciseForm.distanceUnit.value = exercise.distanceUnit || '';
+      exerciseModal.classList.add('show');
+    }
+
+    function renderExerciseList() {
+      const keyword = searchInput.value.trim().toLowerCase();
+      exerciseList.innerHTML = '';
+
+      categories.forEach((category) => {
+        const list = exercises.filter((e) => {
+          const matchCategory = e.categoryId === category.id;
+          const matchKeyword = !keyword || e.name.toLowerCase().includes(keyword) || e.bodyPart.toLowerCase().includes(keyword);
+          return matchCategory && matchKeyword;
+        });
+        if (!list.length) return;
+
+        const details = document.createElement('details');
+        details.open = true;
+
+        const summary = document.createElement('summary');
+        summary.innerHTML = `
+          <span class="category-name">
+            <span class="dot" style="background:${category.color}"></span>
+            ${category.name}
+          </span>
+          <span class="category-tools">
+            <input type="color" class="mini-color" data-edit-color="${category.id}" value="${category.color}" title="調整分類顏色" />
+            <button type="button" class="mini-btn" data-edit-name="${category.id}">名稱</button>
+          </span>`;
+        details.appendChild(summary);
+
+        list.forEach((ex) => {
+          const div = document.createElement('div');
+          div.className = 'exercise';
+          div.draggable = true;
+          div.dataset.exerciseId = ex.id;
+          div.innerHTML = `
+            <span>
+              ⠿ ${ex.name}<br />
+              <small>${exerciseMetaText(ex)}</small>
+            </span>
+            <span class="tag" style="background:${category.color}">${category.name}</span>
+          `;
+          div.addEventListener('dragstart', () => {
+            draggingExerciseId = ex.id;
+            draggingExerciseMoved = true;
+          });
+          div.addEventListener('dragend', () => {
+            setTimeout(() => {
+              draggingExerciseId = '';
+              draggingExerciseMoved = false;
+            }, 0);
+          });
+          div.addEventListener('click', () => {
+            if (draggingExerciseMoved) return;
+            openExerciseModalForEdit(ex);
+          });
+          div.addEventListener('dragover', (ev) => {
+            ev.preventDefault();
+            div.classList.add('drop-target');
+          });
+          div.addEventListener('dragleave', () => {
+            div.classList.remove('drop-target');
+          });
+          div.addEventListener('drop', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            div.classList.remove('drop-target');
+            if (!draggingExerciseId || draggingExerciseId === ex.id) return;
+            reorderExercisesByDrop(draggingExerciseId, ex.id);
+          });
+          details.appendChild(div);
+        });
+        exerciseList.appendChild(details);
+      });
+
+      exerciseList.querySelectorAll('[data-edit-color]').forEach((btn) => {
+        btn.addEventListener('input', () => {
+          const id = btn.dataset.editColor;
+          const c = categoryById(id);
+          if (!c) return;
+          c.color = btn.value;
+          renderExerciseList();
+          refreshAllDayChips();
+          updateInlineAnalytics();
+          queueSaveState();
+        });
+      });
+
+      exerciseList.querySelectorAll('[data-edit-name]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = btn.dataset.editName;
+          const c = categoryById(id);
+          const newName = prompt('請輸入新分類名稱', c.name);
+          if (!newName) return;
+          c.name = newName;
+          renderCategoryOptions();
+          renderExerciseList();
+          refreshAllDayChips();
+          updateInlineAnalytics();
+          queueSaveState();
+        });
+      });
+    }
+
+    function reorderExercisesByDrop(fromExerciseId, toExerciseId) {
+      const fromIndex = exercises.findIndex((e) => e.id === fromExerciseId);
+      const toIndex = exercises.findIndex((e) => e.id === toExerciseId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+      const [item] = exercises.splice(fromIndex, 1);
+      exercises.splice(toIndex, 0, item);
+      renderExerciseList();
+      queueSaveState();
+    }
+
+    function createPlanChip(plan, dateKey) {
+      const ex = exerciseById(plan.exerciseId);
+      const displayName = plan.name || ex?.name || '未命名';
+      const categoryId = plan.categoryId || ex?.categoryId || '';
+      const c = categoryById(categoryId);
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.background = c?.color || '#2563eb';
+      const planLikeExercise = {
+        bodyPart: plan.bodyPart || ex?.bodyPart || '',
+        sets: plan.sets,
+        reps: plan.reps,
+        weight: plan.weight,
+        durationValue: plan.durationValue ?? ex?.durationValue ?? null,
+        durationUnit: plan.durationUnit || ex?.durationUnit || '',
+        distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
+        distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
+      };
+      const chipMeta = planChipMeta(plan, planLikeExercise);
+      chip.textContent = chipMeta ? `${displayName} ${chipMeta}` : displayName;
+      chip.title = `${displayName}｜${exerciseMetaText(planLikeExercise)}`;
+      chip.draggable = true;
+      chip.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        draggingExerciseId = '';
+        draggingPlan = { planId: plan.id, dateKey };
+      });
+      chip.addEventListener('dragend', () => {
+        draggingPlan = null;
+      });
+      return chip;
+    }
+
+    function renderDayCellPlans(dayEl, dateKey) {
+      dayEl.querySelectorAll('.chip').forEach(el => el.remove());
+      (dayPlans[dateKey] || []).forEach((p) => {
+        dayEl.appendChild(createPlanChip(p, dateKey));
+      });
+    }
+
+    function openDrawer(dateKey) {
+      selectedDateKey = dateKey;
+      drawerTitle.textContent = `當日課表｜${dateKey}`;
+      drawerContent.innerHTML = '';
+
+      const plans = dayPlans[dateKey] || [];
+      if (!plans.length) {
+        drawerContent.innerHTML = '<div style="color:#64748b">尚無排程。可拖曳左側動作到該日期。</div>';
+      } else {
+        plans.forEach((plan) => {
+          const ex = exerciseById(plan.exerciseId);
+          const displayName = plan.name || ex?.name || '未命名動作';
+          const categoryId = plan.categoryId || ex?.categoryId || '';
+          const c = categoryById(categoryId) || { name: '未分類', color: '#64748b' };
+          const planLikeExercise = {
+            bodyPart: plan.bodyPart || ex?.bodyPart || '',
+            sets: plan.sets,
+            reps: plan.reps,
+            weight: plan.weight,
+            durationValue: plan.durationValue ?? ex?.durationValue ?? null,
+            durationUnit: plan.durationUnit || ex?.durationUnit || '',
+            distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
+            distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
+          };
+          const drawerMeta = exerciseMetaText(planLikeExercise);
+          const planMeta = planChipMeta(plan, planLikeExercise);
+          const item = document.createElement('div');
+          item.className = 'plan-item';
+          item.innerHTML = `
+            <div>
+              <strong>${displayName}</strong> <span class="tag" style="background:${c.color}">${c.name}</span>
+              <div class="plan-meta">${drawerMeta || '無可顯示資料'}${planMeta ? `｜課表：${planMeta}` : ''}</div>
+            </div>
+            <div class="row">
+              <button class="btn" data-edit-plan="${plan.id}">編輯</button>
+              <button class="btn danger" data-del-plan="${plan.id}">刪除</button>
+            </div>
+          `;
+          drawerContent.appendChild(item);
+        });
+      }
+
+      drawerContent.querySelectorAll('[data-del-plan]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.delPlan;
+          dayPlans[selectedDateKey] = (dayPlans[selectedDateKey] || []).filter(p => p.id !== id);
+          refreshAllDayChips();
+          openDrawer(selectedDateKey);
+          queueSaveState();
+        });
+      });
+
+      drawerContent.querySelectorAll('[data-edit-plan]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.editPlan;
+          const plan = (dayPlans[selectedDateKey] || []).find(p => p.id === id);
+          if (!plan) return;
+          openPlanEditModal(plan);
+        });
+      });
+
+      overlay.classList.add('show');
+      dayDrawer.classList.add('show');
+    }
+
+    function closeDrawer() {
+      overlay.classList.remove('show');
+      dayDrawer.classList.remove('show');
+    }
+
+    function openPlanEditModal(plan) {
+      const ex = exerciseById(plan.exerciseId);
+      planEditTitle.textContent = `編輯課表｜${plan.name || ex?.name || '動作'}`;
+      planEditForm.planId.value = plan.id;
+      planEditForm.exerciseId.value = plan.exerciseId || ex?.id || '';
+      planEditCategorySelect.innerHTML = categories
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+      planEditForm.name.value = plan.name || ex?.name || '';
+      planEditForm.categoryId.value = plan.categoryId || ex?.categoryId || categories[0]?.id || '';
+      planEditForm.bodyPart.value = plan.bodyPart || ex?.bodyPart || '';
+      planEditForm.sets.value = plan.sets ?? '';
+      planEditForm.reps.value = plan.reps ?? '';
+      planEditForm.weight.value = plan.weight ?? '';
+      planEditForm.durationValue.value = plan.durationValue ?? ex?.durationValue ?? '';
+      planEditForm.durationUnit.value = plan.durationUnit || ex?.durationUnit || '';
+      planEditForm.distanceValue.value = plan.distanceValue ?? ex?.distanceValue ?? '';
+      planEditForm.distanceUnit.value = plan.distanceUnit || ex?.distanceUnit || '';
+      planEditModal.classList.add('show');
+    }
+
+    function closePlanEditModal() {
+      planEditModal.classList.remove('show');
+    }
+
+    function buildMonth(baseDate, offset) {
+      const { year, month } = monthMeta(baseDate, offset);
+      const firstDay = new Date(year, month, 1);
+      const firstWeekday = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+      const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+      const block = document.createElement('section');
+      block.className = 'month-block';
+      if (offset === 0) block.id = 'currentMonthBlock';
+
+      const title = document.createElement('div');
+      title.className = 'month-title';
+      title.textContent = `${year} 年 ${String(month + 1).padStart(2, '0')} 月`;
+
+      const weekHead = document.createElement('div');
+      weekHead.className = 'week-head';
+      weekdays.forEach((w) => {
+        const el = document.createElement('div');
+        el.textContent = w;
+        weekHead.appendChild(el);
+      });
+
+      const grid = document.createElement('div');
+      grid.className = 'month-grid';
+      for (let i = 0; i < totalCells; i++) {
+        const day = document.createElement('div');
+        day.className = 'day';
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'date-label';
+
+        let label = 0;
+        let y = year;
+        let m = month;
+
+        if (i < firstWeekday) {
+          label = prevMonthDays - firstWeekday + i + 1;
+          day.classList.add('outside');
+          const prev = new Date(year, month, 0);
+          y = prev.getFullYear();
+          m = prev.getMonth();
+        } else if (i >= firstWeekday + daysInMonth) {
+          label = i - (firstWeekday + daysInMonth) + 1;
+          day.classList.add('outside');
+          const next = new Date(year, month + 1, 1);
+          y = next.getFullYear();
+          m = next.getMonth();
+        } else {
+          label = i - firstWeekday + 1;
+        }
+
+        const dateKey = makeDateKey(y, m, label);
+        day.dataset.dateKey = dateKey;
+        dateLabel.textContent = label;
+        day.appendChild(dateLabel);
+        renderDayCellPlans(day, dateKey);
+
+        day.addEventListener('click', () => openDrawer(dateKey));
+        day.addEventListener('dragover', (e) => { e.preventDefault(); day.classList.add('drop-target'); });
+        day.addEventListener('dragleave', () => day.classList.remove('drop-target'));
+        day.addEventListener('drop', (e) => {
+          e.preventDefault();
+          day.classList.remove('drop-target');
+          if (!draggingExerciseId && !draggingPlan) return;
+          if (draggingPlan) {
+            const { dateKey: fromDateKey, planId } = draggingPlan;
+            const fromPlans = dayPlans[fromDateKey] || [];
+            const planIndex = fromPlans.findIndex((p) => p.id === planId);
+            if (planIndex === -1) return;
+            const [movingPlan] = fromPlans.splice(planIndex, 1);
+            if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
+            dayPlans[dateKey].push(movingPlan);
+            draggingPlan = null;
+          } else {
+            const ex = exerciseById(draggingExerciseId);
+            const newPlan = {
+              id: `p${Date.now()}${Math.floor(Math.random() * 1000)}`,
+              exerciseId: ex.id,
+              name: ex.name,
+              categoryId: ex.categoryId,
+              bodyPart: ex.bodyPart || '',
+              sets: ex.sets ?? 0,
+              reps: ex.reps ?? 0,
+              weight: ex.weight ?? 0,
+              durationValue: ex.durationValue ?? null,
+              durationUnit: ex.durationUnit || '',
+              distanceValue: ex.distanceValue ?? null,
+              distanceUnit: ex.distanceUnit || ''
+            };
+            if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
+            dayPlans[dateKey].push(newPlan);
+          }
+          refreshAllDayChips();
+          updateInlineAnalytics();
+          if (selectedDateKey && dayDrawer.classList.contains('show')) {
+            openDrawer(selectedDateKey);
+          }
+          queueSaveState();
+        });
+
+        grid.appendChild(day);
+      }
+
+      block.appendChild(title);
+      block.appendChild(weekHead);
+      block.appendChild(grid);
+      return block;
+    }
+
+    function refreshAllDayChips() {
+      document.querySelectorAll('.day[data-date-key]').forEach((day) => {
+        renderDayCellPlans(day, day.dataset.dateKey);
+      });
+    }
+
+    function appendMonth(offset) { monthsScroll.appendChild(buildMonth(now, offset)); }
+    function prependMonth(offset) {
+      const beforeHeight = monthsScroll.scrollHeight;
+      monthsScroll.prepend(buildMonth(now, offset));
+      monthsScroll.scrollTop += (monthsScroll.scrollHeight - beforeHeight);
+    }
+
+    function initMonths() {
+      for (let i = startOffset; i <= endOffset; i++) appendMonth(i);
+      monthsScroll.scrollTop = 0;
+    }
+
+    monthsScroll.addEventListener('scroll', () => {
+      if (monthsScroll.scrollTop < 250) {
+        startOffset -= 1;
+        prependMonth(startOffset);
+      }
+      const nearBottom = monthsScroll.scrollHeight - monthsScroll.scrollTop - monthsScroll.clientHeight < 250;
+      if (nearBottom) {
+        endOffset += 1;
+        appendMonth(endOffset);
+      }
+    });
+
+    document.getElementById('goCurrent').addEventListener('click', () => {
+      document.getElementById('currentMonthBlock')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', closeDrawer);
+
+    exerciseList.addEventListener('dragover', (e) => {
+      if (!draggingPlan) return;
+      e.preventDefault();
+      exerciseList.classList.add('exercise-delete-active');
+    });
+    exerciseList.addEventListener('dragleave', () => {
+      exerciseList.classList.remove('exercise-delete-active');
+    });
+    exerciseList.addEventListener('drop', (e) => {
+      e.preventDefault();
+      exerciseList.classList.remove('exercise-delete-active');
+      if (!draggingPlan) return;
+      const { dateKey, planId } = draggingPlan;
+      dayPlans[dateKey] = (dayPlans[dateKey] || []).filter((p) => p.id !== planId);
+      refreshAllDayChips();
+      updateInlineAnalytics();
+      if (selectedDateKey === dateKey && dayDrawer.classList.contains('show')) {
+        openDrawer(selectedDateKey);
+      }
+      draggingPlan = null;
+      queueSaveState();
+    });
+
+    document.getElementById('addCategoryBtn').addEventListener('click', () => {
+      categoryModal.classList.add('show');
+    });
+
+    document.getElementById('closeCategoryModal').addEventListener('click', () => categoryModal.classList.remove('show'));
+    document.getElementById('cancelCategory').addEventListener('click', () => categoryModal.classList.remove('show'));
+    document.getElementById('closePlanEditModal').addEventListener('click', closePlanEditModal);
+    document.getElementById('cancelPlanEdit').addEventListener('click', closePlanEditModal);
+
+    categoryForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = new FormData(categoryForm);
+      categories.push({
+        id: `c${Date.now()}`,
+        name: String(data.get('categoryName')),
+        color: String(data.get('categoryColor'))
+      });
+      renderCategoryOptions();
+      renderExerciseList();
+      refreshAllDayChips();
+      categoryForm.reset();
+      categoryModal.classList.remove('show');
+      queueSaveState();
+    });
+
+    planEditForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = planEditForm.planId.value;
+      const plan = (dayPlans[selectedDateKey] || []).find((p) => p.id === id);
+      if (!plan) return;
+      plan.name = String(planEditForm.name.value || plan.name || '');
+      plan.categoryId = String(planEditForm.categoryId.value || plan.categoryId || '');
+      plan.bodyPart = String(planEditForm.bodyPart.value || '');
+      plan.sets = numberOrNull(planEditForm.sets.value) ?? 0;
+      plan.reps = numberOrNull(planEditForm.reps.value) ?? 0;
+      plan.weight = numberOrNull(planEditForm.weight.value) ?? 0;
+      plan.durationValue = numberOrNull(planEditForm.durationValue.value);
+      plan.durationUnit = String(planEditForm.durationUnit.value || '');
+      plan.distanceValue = numberOrNull(planEditForm.distanceValue.value);
+      plan.distanceUnit = String(planEditForm.distanceUnit.value || '');
+
+      closePlanEditModal();
+      refreshAllDayChips();
+      updateInlineAnalytics();
+      openDrawer(selectedDateKey);
+      queueSaveState();
+    });
+
+    document.getElementById('openExerciseModal').addEventListener('click', () => {
+      openExerciseModalForCreate();
+    });
+    document.getElementById('closeExerciseModal').addEventListener('click', () => {
+      editingExerciseId = '';
+      exerciseModal.classList.remove('show');
+    });
+    document.getElementById('cancelExercise').addEventListener('click', () => {
+      editingExerciseId = '';
+      exerciseModal.classList.remove('show');
+    });
+
+    exerciseForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const form = new FormData(exerciseForm);
+      if (editingExerciseId) {
+        const target = exerciseById(editingExerciseId);
+        if (target) {
+          target.name = String(form.get('name'));
+          target.categoryId = String(form.get('categoryId'));
+          target.bodyPart = String(form.get('bodyPart') || '');
+          target.sets = numberOrNull(form.get('sets'));
+          target.reps = numberOrNull(form.get('reps'));
+          target.weight = numberOrNull(form.get('weight'));
+          target.durationValue = numberOrNull(form.get('durationValue'));
+          target.durationUnit = String(form.get('durationUnit') || '');
+          target.distanceValue = numberOrNull(form.get('distanceValue'));
+          target.distanceUnit = String(form.get('distanceUnit') || '');
+        }
+      } else {
+        const item = {
+          id: `e${Date.now()}`,
+          name: String(form.get('name')),
+          categoryId: String(form.get('categoryId')),
+          bodyPart: String(form.get('bodyPart') || ''),
+          sets: numberOrNull(form.get('sets')),
+          reps: numberOrNull(form.get('reps')),
+          weight: numberOrNull(form.get('weight')),
+          durationValue: numberOrNull(form.get('durationValue')),
+          durationUnit: String(form.get('durationUnit') || ''),
+          distanceValue: numberOrNull(form.get('distanceValue')),
+          distanceUnit: String(form.get('distanceUnit') || '')
+        };
+        exercises.push(item);
+      }
+      renderExerciseList();
+      editingExerciseId = '';
+      exerciseForm.reset();
+      renderCategoryOptions();
+      exerciseModal.classList.remove('show');
+      queueSaveState();
+    });
+
+    searchInput.addEventListener('input', renderExerciseList);
+
+    async function bootstrap() {
+      await loadRemoteState();
+      renderCategoryOptions();
+      renderExerciseList();
+      initMonths();
+      updateInlineAnalytics();
+      await checkHealth();
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
