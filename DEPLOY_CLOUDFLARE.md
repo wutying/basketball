@@ -27,13 +27,16 @@ npx wrangler d1 create training_planner
 npx wrangler d1 execute training_planner --file=./migrations/0001_init.sql
 ```
 
+> 請一次執行「整份 SQL 檔」，不要只複製單行 `CREATE INDEX ...`。  
+> 若只執行 index 那一行，會出現 `no such table: main.plan_items`（因為資料表尚未建立）。
+
 或直接用 repo 根目錄的 `schema.sql`：
 
 ```bash
 npx wrangler d1 execute training_planner --file=../schema.sql
 ```
 
-> 備註：目前 Worker 已內建自動初始化 `app_state` 資料表（第一次呼叫 API 會自動建立）。  
+> 備註：目前 Worker 已內建自動初始化 `categories / exercises / plan_items` 資料表（第一次呼叫 API 會自動建立）。  
 > migration 仍建議保留執行，便於環境一致化與後續版本管理。
 
 部署 Worker：

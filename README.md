@@ -24,7 +24,9 @@ npx wrangler dev
 
 No URL input/query parameter is required.
 
-Worker backend will auto-create the `app_state` table on first API request if D1 is bound but migration wasn't run yet.
+Worker backend will auto-create `categories` / `exercises` / `plan_items` tables on first API request if D1 is bound but migration wasn't run yet.
+
+When applying schema, execute the whole SQL file (migration command) instead of copying a single `CREATE INDEX` statement, otherwise you may hit `no such table: main.plan_items`.
 
 Current Pages URL:
 

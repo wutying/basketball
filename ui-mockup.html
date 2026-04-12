@@ -774,7 +774,11 @@
               ⠿ ${ex.name}<br />
               <small>${exerciseMetaText(ex)}</small>
             </span>
-            <span class="tag" style="background:${category.color}">${category.name}</span>
+            <span class="row">
+              <button type="button" class="mini-btn" data-move-up="${ex.id}" title="上移">↑</button>
+              <button type="button" class="mini-btn" data-move-down="${ex.id}" title="下移">↓</button>
+              <span class="tag" style="background:${category.color}">${category.name}</span>
+            </span>
           `;
           div.addEventListener('dragstart', () => {
             draggingExerciseId = ex.id;
@@ -823,6 +827,33 @@
           queueSaveState();
         });
       });
+
+      exerciseList.querySelectorAll('[data-move-up]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          moveExercise(btn.dataset.moveUp, -1);
+        });
+      });
+
+      exerciseList.querySelectorAll('[data-move-down]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          moveExercise(btn.dataset.moveDown, 1);
+        });
+      });
+    }
+
+    function moveExercise(exerciseId, direction) {
+      const currentIndex = exercises.findIndex((e) => e.id === exerciseId);
+      if (currentIndex === -1) return;
+      const targetIndex = currentIndex + direction;
+      if (targetIndex < 0 || targetIndex >= exercises.length) return;
+      const [item] = exercises.splice(currentIndex, 1);
+      exercises.splice(targetIndex, 0, item);
+      renderExerciseList();
+      queueSaveState();
     }
 
     function createPlanChip(exerciseId, sets, reps, weight, planId, dateKey) {
