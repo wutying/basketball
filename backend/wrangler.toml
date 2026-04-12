@@ -1,0 +1,8 @@
+name = "training-planner-api"
+main = "src/index.mjs"
+compatibility_date = "2026-04-08"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "training_planner"
+database_id = "c3cc2d76-141b-48a0-b073-f3f09dffcb52"
