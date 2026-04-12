@@ -156,7 +156,6 @@
       font-size: 12px;
       gap: 8px;
     }
-    .exercise small { color: var(--muted); }
     .tag {
       color: #fff;
       border-radius: 999px;
@@ -274,9 +273,6 @@
     .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
     .kpi.ok .value { color: var(--ok); }
     .kpi.warn .value { color: var(--warn); }
-    .category-month-stats { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 6px; }
-    .category-month-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text); }
-    .category-month-row .days { color: var(--muted); }
 
     .overlay {
       position: fixed;
@@ -411,13 +407,7 @@
       </section>
 
       <section class="analytics card">
-        <div class="kpis">
-          <div class="kpi"><div class="label">總訓練次數</div><div class="value" id="kpiTotalSessions">0</div></div>
-          <div class="kpi ok"><div class="label">完成率</div><div class="value" id="kpiCompletionRate">0%</div></div>
-          <div class="kpi"><div class="label">平均 RPE</div><div class="value" id="kpiAvgRpe">-</div></div>
-          <div class="kpi warn"><div class="label">高負荷日</div><div class="value" id="kpiHighLoadDays">0 天</div></div>
-        </div>
-        <div class="category-month-stats" id="monthlyCategoryStats"></div>
+        <div class="kpis" id="categoryMonthKpis"></div>
       </section>
     </section>
   </main>
@@ -621,24 +611,11 @@
     const dayPlans = {}; // key: YYYY-MM-DD -> [{id, exerciseId, sets, reps, weight}]
 
     function updateInlineAnalytics() {
-      const allPlans = Object.values(dayPlans).flat();
-      const totalSessions = allPlans.length;
-      const completionRate = totalSessions > 0 ? '100%' : '0%';
-      const avgRpe = '-';
-      const highLoadDays = Object.values(dayPlans).filter((plans) => {
-        const totalWeight = plans.reduce((sum, p) => sum + (Number(p.sets) * Number(p.reps) * Number(p.weight)), 0);
-        return totalWeight >= 5000;
-      }).length;
-
-      document.getElementById('kpiTotalSessions').textContent = String(totalSessions);
-      document.getElementById('kpiCompletionRate').textContent = completionRate;
-      document.getElementById('kpiAvgRpe').textContent = avgRpe;
-      document.getElementById('kpiHighLoadDays').textContent = `${highLoadDays} 天`;
       updateMonthlyCategoryStats();
     }
 
     function updateMonthlyCategoryStats() {
-      const container = document.getElementById('monthlyCategoryStats');
+      const container = document.getElementById('categoryMonthKpis');
       if (!container) return;
       const nowMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
       const daySetsByCategory = new Map();
@@ -660,12 +637,12 @@
         .sort((a, b) => b.days - a.days);
 
       if (!rows.length) {
-        container.innerHTML = '<div class="days">本月尚無分類訓練資料</div>';
+        container.innerHTML = '<div class="kpi"><div class="label">本月分類統計</div><div class="value" style="font-size:16px;">尚無資料</div></div>';
         return;
       }
 
       container.innerHTML = rows
-        .map((r) => `<div class="category-month-row"><span>${r.name}</span><span class="days">${r.days} 天</span></div>`)
+        .map((r) => `<div class="kpi"><div class="label">${r.name}</div><div class="value">${r.days} 天</div></div>`)
         .join('');
     }
 
@@ -774,7 +751,6 @@
 
     function exerciseMetaText(ex) {
       const parts = [];
-      if (ex.bodyPart) parts.push(ex.bodyPart);
       if (Number(ex.sets) > 0 && Number(ex.reps) > 0) {
         parts.push(`${ex.sets}組 x ${ex.reps}下`);
       }
@@ -806,7 +782,6 @@
         const unitMap = { m: '公尺', km: '公里' };
         parts.push(`${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
       }
-      if (ex?.bodyPart) parts.push(ex.bodyPart);
       return parts.length ? parts.join('｜') : '查看';
     }
 
@@ -878,8 +853,7 @@
           div.dataset.exerciseId = ex.id;
           div.innerHTML = `
             <span>
-              ⠿ ${ex.name}<br />
-              <small>${exerciseMetaText(ex)}</small>
+              ⠿ ${ex.name}
             </span>
             <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
