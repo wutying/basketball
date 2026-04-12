@@ -32,6 +32,10 @@ const CREATE_STATEMENTS = [
     default_sets INTEGER NOT NULL,
     default_reps INTEGER NOT NULL,
     default_weight REAL NOT NULL,
+    duration_value REAL,
+    duration_unit TEXT,
+    distance_value REAL,
+    distance_unit TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -55,12 +59,31 @@ const CREATE_STATEMENTS = [
 
 let schemaReady = false;
 
+const OPTIONAL_EXERCISE_COLUMNS = [
+  "ALTER TABLE exercises ADD COLUMN duration_value REAL",
+  "ALTER TABLE exercises ADD COLUMN duration_unit TEXT",
+  "ALTER TABLE exercises ADD COLUMN distance_value REAL",
+  "ALTER TABLE exercises ADD COLUMN distance_unit TEXT"
+];
+
+async function ensureExerciseColumns(env) {
+  for (const sql of OPTIONAL_EXERCISE_COLUMNS) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (err) {
+      const message = String(err?.message || "");
+      if (!message.includes("duplicate column name")) throw err;
+    }
+  }
+}
+
 async function ensureSchema(env) {
   if (!env.DB || schemaReady) return;
   try {
     for (const sql of CREATE_STATEMENTS) {
       await env.DB.prepare(sql).run();
     }
+    await ensureExerciseColumns(env);
   } catch (err) {
     // Recovery path for partially-migrated/broken schemas in existing D1 databases.
     await env.DB.prepare("DROP TABLE IF EXISTS plan_items").run();
@@ -69,6 +92,7 @@ async function ensureSchema(env) {
     for (const sql of CREATE_STATEMENTS) {
       await env.DB.prepare(sql).run();
     }
+    await ensureExerciseColumns(env);
   }
   schemaReady = true;
 }
@@ -81,7 +105,8 @@ async function loadState(env) {
     "SELECT id, name, color FROM categories ORDER BY name"
   ).all();
   const exercisesRs = await env.DB.prepare(
-    `SELECT id, name, category_id, body_part, default_sets, default_reps, default_weight
+    `SELECT id, name, category_id, body_part, default_sets, default_reps, default_weight,
+            duration_value, duration_unit, distance_value, distance_unit
      FROM exercises
      ORDER BY name`
   ).all();
@@ -104,7 +129,11 @@ async function loadState(env) {
     bodyPart: r.body_part,
     sets: Number(r.default_sets),
     reps: Number(r.default_reps),
-    weight: Number(r.default_weight)
+    weight: Number(r.default_weight),
+    durationValue: r.duration_value === null ? null : Number(r.duration_value),
+    durationUnit: r.duration_unit || "",
+    distanceValue: r.distance_value === null ? null : Number(r.distance_value),
+    distanceUnit: r.distance_unit || ""
   }));
 
   const dayPlans = {};
@@ -152,8 +181,9 @@ async function saveState(env, state) {
   for (const e of exercises) {
     await env.DB.prepare(
       `INSERT INTO exercises
-      (id, name, category_id, body_part, default_sets, default_reps, default_weight, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      (id, name, category_id, body_part, default_sets, default_reps, default_weight,
+       duration_value, duration_unit, distance_value, distance_unit, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     ).bind(
       e.id,
       e.name,
@@ -161,7 +191,11 @@ async function saveState(env, state) {
       e.bodyPart || "未分類",
       Number(e.sets || 0),
       Number(e.reps || 0),
-      Number(e.weight || 0)
+      Number(e.weight || 0),
+      e.durationValue === null || e.durationValue === undefined || e.durationValue === "" ? null : Number(e.durationValue),
+      e.durationUnit || null,
+      e.distanceValue === null || e.distanceValue === undefined || e.distanceValue === "" ? null : Number(e.distanceValue),
+      e.distanceUnit || null
     ).run();
     validExerciseIds.add(e.id);
   }

@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS exercises (
   default_sets INTEGER NOT NULL,
   default_reps INTEGER NOT NULL,
   default_weight REAL NOT NULL,
+  duration_value REAL,
+  duration_unit TEXT,
+  distance_value REAL,
+  distance_unit TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (category_id) REFERENCES categories(id)

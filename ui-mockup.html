@@ -445,12 +445,37 @@
           <select name="categoryId" id="exerciseCategorySelect"></select>
         </div>
         <div class="grid2">
-          <div class="field"><label>訓練部位</label><input required name="bodyPart" placeholder="例如：下肢" /></div>
-          <div class="field"><label>預設組數</label><input required type="number" min="1" name="sets" value="4" /></div>
+          <div class="field"><label>訓練部位</label><input name="bodyPart" placeholder="例如：下肢" /></div>
+          <div class="field"><label>預設組數（選填）</label><input type="number" min="0" name="sets" /></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>預設下數(次數)</label><input required type="number" min="1" name="reps" value="8" /></div>
-          <div class="field"><label>預設重量(kg)</label><input required type="number" min="0" name="weight" value="40" /></div>
+          <div class="field"><label>預設下數(次數，選填)</label><input type="number" min="0" name="reps" /></div>
+          <div class="field"><label>預設重量(kg，選填)</label><input type="number" min="0" name="weight" /></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>時間（選填）</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="durationValue" placeholder="數值" />
+              <select name="durationUnit">
+                <option value="">單位</option>
+                <option value="seconds">秒</option>
+                <option value="minutes">分鐘</option>
+                <option value="hours">小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>距離（選填）</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="distanceValue" placeholder="數值" />
+              <select name="distanceUnit">
+                <option value="">單位</option>
+                <option value="m">公尺</option>
+                <option value="km">公里</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="modal-foot">
           <button type="button" class="btn" id="cancelExercise">取消</button>
@@ -541,12 +566,12 @@
     ];
 
     const DEFAULT_EXERCISES = [
-      { id: 'e1', name: 'Box Jump', categoryId: 'c1', bodyPart: '下肢', sets: 4, reps: 5, weight: 0 },
-      { id: 'e2', name: 'Med Ball Toss', categoryId: 'c1', bodyPart: '上肢', sets: 3, reps: 8, weight: 6 },
-      { id: 'e3', name: 'Drop Jump', categoryId: 'c2', bodyPart: '下肢', sets: 3, reps: 6, weight: 0 },
-      { id: 'e4', name: 'Pogo Jump', categoryId: 'c2', bodyPart: '小腿', sets: 4, reps: 20, weight: 0 },
-      { id: 'e5', name: 'Back Squat', categoryId: 'c3', bodyPart: '下肢', sets: 5, reps: 5, weight: 80 },
-      { id: 'e6', name: 'RDL', categoryId: 'c3', bodyPart: '後鏈', sets: 4, reps: 8, weight: 70 }
+      { id: 'e1', name: 'Box Jump', categoryId: 'c1', bodyPart: '下肢', sets: 4, reps: 5, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e2', name: 'Med Ball Toss', categoryId: 'c1', bodyPart: '上肢', sets: 3, reps: 8, weight: 6, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e3', name: 'Drop Jump', categoryId: 'c2', bodyPart: '下肢', sets: 3, reps: 6, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e4', name: 'Pogo Jump', categoryId: 'c2', bodyPart: '小腿', sets: 4, reps: 20, weight: 0, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e5', name: 'Back Squat', categoryId: 'c3', bodyPart: '下肢', sets: 5, reps: 5, weight: 80, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' },
+      { id: 'e6', name: 'RDL', categoryId: 'c3', bodyPart: '後鏈', sets: 4, reps: 8, weight: 70, durationValue: null, durationUnit: '', distanceValue: null, distanceUnit: '' }
     ];
 
     const categories = structuredClone(DEFAULT_CATEGORIES);
@@ -589,7 +614,18 @@
         const useRemote = remoteCategories.length > 0 && remoteExercises.length > 0;
 
         categories.splice(0, categories.length, ...(useRemote ? remoteCategories : DEFAULT_CATEGORIES));
-        exercises.splice(0, exercises.length, ...(useRemote ? remoteExercises : DEFAULT_EXERCISES));
+        const normalizedExercises = (useRemote ? remoteExercises : DEFAULT_EXERCISES).map((e) => ({
+          ...e,
+          bodyPart: e.bodyPart || '',
+          sets: e.sets ?? null,
+          reps: e.reps ?? null,
+          weight: e.weight ?? null,
+          durationValue: e.durationValue ?? null,
+          durationUnit: e.durationUnit || '',
+          distanceValue: e.distanceValue ?? null,
+          distanceUnit: e.distanceUnit || ''
+        }));
+        exercises.splice(0, exercises.length, ...normalizedExercises);
         Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
         Object.assign(dayPlans, data.state.dayPlans || {});
         setApiStatus(true, '已連線後端');
@@ -644,6 +680,29 @@
       return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
 
+    function numberOrNull(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function exerciseMetaText(ex) {
+      const parts = [];
+      if (ex.bodyPart) parts.push(ex.bodyPart);
+      if (ex.sets !== null || ex.reps !== null || ex.weight !== null) {
+        parts.push(`${ex.sets ?? '-'}組 x ${ex.reps ?? '-'}下｜${ex.weight ?? '-'}kg`);
+      }
+      if (ex.durationValue !== null && ex.durationUnit) {
+        const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
+        parts.push(`時間：${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
+      }
+      if (ex.distanceValue !== null && ex.distanceUnit) {
+        const unitMap = { m: '公尺', km: '公里' };
+        parts.push(`距離：${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
+      }
+      return parts.join('｜');
+    }
+
     function renderCategoryOptions() {
       exerciseCategorySelect.innerHTML = categories
         .map(c => `<option value="${c.id}">${c.name}</option>`)
@@ -668,9 +727,13 @@
       exerciseForm.name.value = exercise.name;
       exerciseForm.categoryId.value = exercise.categoryId;
       exerciseForm.bodyPart.value = exercise.bodyPart;
-      exerciseForm.sets.value = String(exercise.sets);
-      exerciseForm.reps.value = String(exercise.reps);
-      exerciseForm.weight.value = String(exercise.weight);
+      exerciseForm.sets.value = exercise.sets ?? '';
+      exerciseForm.reps.value = exercise.reps ?? '';
+      exerciseForm.weight.value = exercise.weight ?? '';
+      exerciseForm.durationValue.value = exercise.durationValue ?? '';
+      exerciseForm.durationUnit.value = exercise.durationUnit || '';
+      exerciseForm.distanceValue.value = exercise.distanceValue ?? '';
+      exerciseForm.distanceUnit.value = exercise.distanceUnit || '';
       exerciseModal.classList.add('show');
     }
 
@@ -709,7 +772,7 @@
           div.innerHTML = `
             <span>
               ⠿ ${ex.name}<br />
-              <small>${ex.bodyPart}｜${ex.sets}組 x ${ex.reps}下｜${ex.weight}kg</small>
+              <small>${exerciseMetaText(ex)}</small>
             </span>
             <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
@@ -938,9 +1001,9 @@
             const newPlan = {
               id: `p${Date.now()}${Math.floor(Math.random() * 1000)}`,
               exerciseId: ex.id,
-              sets: ex.sets,
-              reps: ex.reps,
-              weight: ex.weight
+              sets: ex.sets ?? 0,
+              reps: ex.reps ?? 0,
+              weight: ex.weight ?? 0
             };
             if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
             dayPlans[dateKey].push(newPlan);
@@ -1082,20 +1145,28 @@
         if (target) {
           target.name = String(form.get('name'));
           target.categoryId = String(form.get('categoryId'));
-          target.bodyPart = String(form.get('bodyPart'));
-          target.sets = Number(form.get('sets'));
-          target.reps = Number(form.get('reps'));
-          target.weight = Number(form.get('weight'));
+          target.bodyPart = String(form.get('bodyPart') || '');
+          target.sets = numberOrNull(form.get('sets'));
+          target.reps = numberOrNull(form.get('reps'));
+          target.weight = numberOrNull(form.get('weight'));
+          target.durationValue = numberOrNull(form.get('durationValue'));
+          target.durationUnit = String(form.get('durationUnit') || '');
+          target.distanceValue = numberOrNull(form.get('distanceValue'));
+          target.distanceUnit = String(form.get('distanceUnit') || '');
         }
       } else {
         const item = {
           id: `e${Date.now()}`,
           name: String(form.get('name')),
           categoryId: String(form.get('categoryId')),
-          bodyPart: String(form.get('bodyPart')),
-          sets: Number(form.get('sets')),
-          reps: Number(form.get('reps')),
-          weight: Number(form.get('weight'))
+          bodyPart: String(form.get('bodyPart') || ''),
+          sets: numberOrNull(form.get('sets')),
+          reps: numberOrNull(form.get('reps')),
+          weight: numberOrNull(form.get('weight')),
+          durationValue: numberOrNull(form.get('durationValue')),
+          durationUnit: String(form.get('durationUnit') || ''),
+          distanceValue: numberOrNull(form.get('distanceValue')),
+          distanceUnit: String(form.get('distanceUnit') || '')
         };
         exercises.push(item);
       }
