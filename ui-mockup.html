@@ -156,6 +156,7 @@
       font-size: 12px;
       gap: 8px;
     }
+    .exercise small { color: var(--muted); }
     .tag {
       color: #fff;
       border-radius: 999px;
@@ -273,6 +274,9 @@
     .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
     .kpi.ok .value { color: var(--ok); }
     .kpi.warn .value { color: var(--warn); }
+    .category-month-stats { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 6px; }
+    .category-month-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text); }
+    .category-month-row .days { color: var(--muted); }
 
     .overlay {
       position: fixed;
@@ -407,16 +411,13 @@
       </section>
 
       <section class="analytics card">
-        <div class="analytics-head">
-          <strong>分析概覽（頁內）</strong>
-          <a class="btn" href="analytics-standalone.html">開啟完整分析頁</a>
-        </div>
         <div class="kpis">
           <div class="kpi"><div class="label">總訓練次數</div><div class="value" id="kpiTotalSessions">0</div></div>
           <div class="kpi ok"><div class="label">完成率</div><div class="value" id="kpiCompletionRate">0%</div></div>
           <div class="kpi"><div class="label">平均 RPE</div><div class="value" id="kpiAvgRpe">-</div></div>
           <div class="kpi warn"><div class="label">高負荷日</div><div class="value" id="kpiHighLoadDays">0 天</div></div>
         </div>
+        <div class="category-month-stats" id="monthlyCategoryStats"></div>
       </section>
     </section>
   </main>
@@ -633,6 +634,39 @@
       document.getElementById('kpiCompletionRate').textContent = completionRate;
       document.getElementById('kpiAvgRpe').textContent = avgRpe;
       document.getElementById('kpiHighLoadDays').textContent = `${highLoadDays} 天`;
+      updateMonthlyCategoryStats();
+    }
+
+    function updateMonthlyCategoryStats() {
+      const container = document.getElementById('monthlyCategoryStats');
+      if (!container) return;
+      const nowMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+      const daySetsByCategory = new Map();
+
+      for (const [dateKey, plans] of Object.entries(dayPlans)) {
+        if (!dateKey.startsWith(nowMonthPrefix)) continue;
+        for (const plan of plans || []) {
+          const ex = exerciseById(plan.exerciseId);
+          const categoryId = plan.categoryId || ex?.categoryId;
+          if (!categoryId) continue;
+          if (!daySetsByCategory.has(categoryId)) daySetsByCategory.set(categoryId, new Set());
+          daySetsByCategory.get(categoryId).add(dateKey);
+        }
+      }
+
+      const rows = categories
+        .map((c) => ({ name: c.name, days: daySetsByCategory.get(c.id)?.size || 0 }))
+        .filter((r) => r.days > 0)
+        .sort((a, b) => b.days - a.days);
+
+      if (!rows.length) {
+        container.innerHTML = '<div class="days">本月尚無分類訓練資料</div>';
+        return;
+      }
+
+      container.innerHTML = rows
+        .map((r) => `<div class="category-month-row"><span>${r.name}</span><span class="days">${r.days} 天</span></div>`)
+        .join('');
     }
 
     async function apiFetch(path, options = {}) {
@@ -656,7 +690,7 @@
         categories.splice(0, categories.length, ...(useRemote ? remoteCategories : DEFAULT_CATEGORIES));
         const normalizedExercises = (useRemote ? remoteExercises : DEFAULT_EXERCISES).map((e) => ({
           ...e,
-          bodyPart: e.bodyPart ?? null,
+          bodyPart: e.bodyPart || '',
           sets: e.sets ?? null,
           reps: e.reps ?? null,
           weight: e.weight ?? null,
@@ -673,7 +707,7 @@
             ...p,
             name: p.name || "",
             categoryId: p.categoryId || "",
-            bodyPart: p.bodyPart ?? null,
+            bodyPart: p.bodyPart || "",
             durationValue: p.durationValue ?? null,
             durationUnit: p.durationUnit || "",
             distanceValue: p.distanceValue ?? null,
@@ -740,14 +774,18 @@
 
     function exerciseMetaText(ex) {
       const parts = [];
-      if (ex.sets !== null || ex.reps !== null || ex.weight !== null) {
-        parts.push(`${ex.sets ?? '-'}組 x ${ex.reps ?? '-'}下｜${ex.weight ?? '-'}kg`);
+      if (ex.bodyPart) parts.push(ex.bodyPart);
+      if (Number(ex.sets) > 0 && Number(ex.reps) > 0) {
+        parts.push(`${ex.sets}組 x ${ex.reps}下`);
       }
-      if (ex.durationValue !== null && ex.durationUnit) {
+      if (Number(ex.weight) > 0) {
+        parts.push(`${ex.weight}kg`);
+      }
+      if (Number(ex.durationValue) > 0 && ex.durationUnit) {
         const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
         parts.push(`時間：${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
       }
-      if (ex.distanceValue !== null && ex.distanceUnit) {
+      if (Number(ex.distanceValue) > 0 && ex.distanceUnit) {
         const unitMap = { m: '公尺', km: '公里' };
         parts.push(`距離：${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
       }
@@ -757,17 +795,18 @@
     function planChipMeta(plan, ex) {
       const parts = [];
       const hasSetsReps = Number(plan.sets) > 0 && Number(plan.reps) > 0;
-      const hasWeight = plan.weight !== null && plan.weight !== undefined && plan.weight !== "";
+      const hasWeight = Number(plan.weight) > 0;
       if (hasSetsReps) parts.push(`${plan.sets}x${plan.reps}`);
       if (hasWeight) parts.push(`${plan.weight}kg`);
-      if (ex?.durationValue !== null && ex?.durationValue !== undefined && ex?.durationUnit) {
+      if (Number(ex?.durationValue) > 0 && ex?.durationUnit) {
         const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
         parts.push(`${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`);
       }
-      if (ex?.distanceValue !== null && ex?.distanceValue !== undefined && ex?.distanceUnit) {
+      if (Number(ex?.distanceValue) > 0 && ex?.distanceUnit) {
         const unitMap = { m: '公尺', km: '公里' };
         parts.push(`${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`);
       }
+      if (ex?.bodyPart) parts.push(ex.bodyPart);
       return parts.length ? parts.join('｜') : '查看';
     }
 
@@ -839,7 +878,8 @@
           div.dataset.exerciseId = ex.id;
           div.innerHTML = `
             <span>
-              ⠿ ${ex.name}
+              ⠿ ${ex.name}<br />
+              <small>${exerciseMetaText(ex)}</small>
             </span>
             <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
@@ -925,7 +965,7 @@
       chip.className = 'chip';
       chip.style.background = c?.color || '#2563eb';
       const planLikeExercise = {
-        bodyPart: plan.bodyPart ?? ex?.bodyPart ?? null,
+        bodyPart: plan.bodyPart || ex?.bodyPart || '',
         sets: plan.sets,
         reps: plan.reps,
         weight: plan.weight,
@@ -934,7 +974,8 @@
         distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
         distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
       };
-      chip.textContent = `${displayName} ${planChipMeta(plan, planLikeExercise)}`;
+      const chipMeta = planChipMeta(plan, planLikeExercise);
+      chip.textContent = chipMeta ? `${displayName} ${chipMeta}` : displayName;
       chip.title = `${displayName}｜${exerciseMetaText(planLikeExercise)}`;
       chip.draggable = true;
       chip.addEventListener('dragstart', (e) => {
@@ -970,7 +1011,7 @@
           const categoryId = plan.categoryId || ex?.categoryId || '';
           const c = categoryById(categoryId) || { name: '未分類', color: '#64748b' };
           const planLikeExercise = {
-            bodyPart: plan.bodyPart ?? ex?.bodyPart ?? null,
+            bodyPart: plan.bodyPart || ex?.bodyPart || '',
             sets: plan.sets,
             reps: plan.reps,
             weight: plan.weight,
@@ -979,12 +1020,14 @@
             distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
             distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
           };
+          const drawerMeta = exerciseMetaText(planLikeExercise);
+          const planMeta = planChipMeta(plan, planLikeExercise);
           const item = document.createElement('div');
           item.className = 'plan-item';
           item.innerHTML = `
             <div>
               <strong>${displayName}</strong> <span class="tag" style="background:${c.color}">${c.name}</span>
-              <div class="plan-meta">${exerciseMetaText(planLikeExercise)}｜課表：${planChipMeta(plan, planLikeExercise)}</div>
+              <div class="plan-meta">${drawerMeta || '無可顯示資料'}${planMeta ? `｜課表：${planMeta}` : ''}</div>
             </div>
             <div class="row">
               <button class="btn" data-edit-plan="${plan.id}">編輯</button>
@@ -1033,7 +1076,7 @@
         .join('');
       planEditForm.name.value = plan.name || ex?.name || '';
       planEditForm.categoryId.value = plan.categoryId || ex?.categoryId || categories[0]?.id || '';
-      planEditForm.bodyPart.value = plan.bodyPart ?? ex?.bodyPart ?? '';
+      planEditForm.bodyPart.value = plan.bodyPart || ex?.bodyPart || '';
       planEditForm.sets.value = plan.sets ?? '';
       planEditForm.reps.value = plan.reps ?? '';
       planEditForm.weight.value = plan.weight ?? '';
@@ -1129,7 +1172,7 @@
               exerciseId: ex.id,
               name: ex.name,
               categoryId: ex.categoryId,
-              bodyPart: ex.bodyPart ?? null,
+              bodyPart: ex.bodyPart || '',
               sets: ex.sets ?? 0,
               reps: ex.reps ?? 0,
               weight: ex.weight ?? 0,
@@ -1250,7 +1293,7 @@
       if (!plan) return;
       plan.name = String(planEditForm.name.value || plan.name || '');
       plan.categoryId = String(planEditForm.categoryId.value || plan.categoryId || '');
-      plan.bodyPart = planEditForm.bodyPart.value ? String(planEditForm.bodyPart.value) : null;
+      plan.bodyPart = String(planEditForm.bodyPart.value || '');
       plan.sets = numberOrNull(planEditForm.sets.value) ?? 0;
       plan.reps = numberOrNull(planEditForm.reps.value) ?? 0;
       plan.weight = numberOrNull(planEditForm.weight.value) ?? 0;
@@ -1286,7 +1329,7 @@
         if (target) {
           target.name = String(form.get('name'));
           target.categoryId = String(form.get('categoryId'));
-          target.bodyPart = form.get('bodyPart') ? String(form.get('bodyPart')) : null;
+          target.bodyPart = String(form.get('bodyPart') || '');
           target.sets = numberOrNull(form.get('sets'));
           target.reps = numberOrNull(form.get('reps'));
           target.weight = numberOrNull(form.get('weight'));
@@ -1300,7 +1343,7 @@
           id: `e${Date.now()}`,
           name: String(form.get('name')),
           categoryId: String(form.get('categoryId')),
-          bodyPart: form.get('bodyPart') ? String(form.get('bodyPart')) : null,
+          bodyPart: String(form.get('bodyPart') || ''),
           sets: numberOrNull(form.get('sets')),
           reps: numberOrNull(form.get('reps')),
           weight: numberOrNull(form.get('weight')),
