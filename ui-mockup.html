@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>訓練菜單排程系統</title>
+  <title>飛人｜訓練菜單排程系統</title>
+  <link rel="icon" type="image/svg+xml" href="jumpman-logo.svg" />
   <style>
     :root {
       --bg: #f3f6fb;
@@ -376,7 +377,7 @@
 </head>
 <body>
   <header class="header">
-    <h1>🏀 訓練菜單排程系統</h1>
+    <h1><img src="jumpman-logo.svg" alt="飛人logo" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;" /> 訓練菜單排程系統 <img src="jumpman-logo.svg" alt="飛人logo" style="width:20px;height:20px;vertical-align:-4px;margin-left:6px;" /></h1>
     <div class="actions">
       <a class="btn" href="analytics-standalone.html">分析獨立頁</a>
       <button class="btn primary" id="goCurrent">回到本月</button>
@@ -515,11 +516,49 @@
       </div>
       <form class="modal-body" id="planEditForm">
         <input type="hidden" name="planId" />
-        <div class="grid2">
-          <div class="field"><label>組數</label><input required type="number" min="1" name="sets" /></div>
-          <div class="field"><label>下數(次數)</label><input required type="number" min="1" name="reps" /></div>
+        <input type="hidden" name="exerciseId" />
+        <div class="field">
+          <label>動作名稱</label>
+          <input required name="name" />
         </div>
-        <div class="field"><label>重量(kg)</label><input required type="number" min="0" name="weight" /></div>
+        <div class="field">
+          <label>分類</label>
+          <select name="categoryId" id="planEditCategorySelect"></select>
+        </div>
+        <div class="field">
+          <label>訓練部位</label>
+          <input name="bodyPart" />
+        </div>
+        <div class="grid2">
+          <div class="field"><label>組數</label><input type="number" min="0" name="sets" /></div>
+          <div class="field"><label>下數(次數)</label><input type="number" min="0" name="reps" /></div>
+        </div>
+        <div class="field"><label>重量(kg)</label><input type="number" min="0" name="weight" /></div>
+        <div class="grid2">
+          <div class="field">
+            <label>時間</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="durationValue" placeholder="數值" />
+              <select name="durationUnit">
+                <option value="">單位</option>
+                <option value="seconds">秒</option>
+                <option value="minutes">分鐘</option>
+                <option value="hours">小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>距離</label>
+            <div class="grid2">
+              <input type="number" min="0" step="0.1" name="distanceValue" placeholder="數值" />
+              <select name="distanceUnit">
+                <option value="">單位</option>
+                <option value="m">公尺</option>
+                <option value="km">公里</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="modal-foot">
           <button type="button" class="btn" id="cancelPlanEdit">取消</button>
           <button type="submit" class="btn primary">儲存</button>
@@ -547,6 +586,7 @@
     const planEditModal = document.getElementById('planEditModal');
     const planEditTitle = document.getElementById('planEditTitle');
     const planEditForm = document.getElementById('planEditForm');
+    const planEditCategorySelect = document.getElementById('planEditCategorySelect');
     const apiStatus = document.getElementById('apiStatus');
 
     const now = new Date();
@@ -704,6 +744,22 @@
       return parts.join('｜');
     }
 
+    function planChipMeta(plan, ex) {
+      const hasSetsReps = Number(plan.sets) > 0 && Number(plan.reps) > 0;
+      if (hasSetsReps) return `${plan.sets}x${plan.reps}`;
+      if (Number(plan.weight) > 0) return `${plan.weight}kg`;
+      if (ex?.durationValue !== null && ex?.durationValue !== undefined && ex?.durationUnit) {
+        const unitMap = { seconds: '秒', minutes: '分鐘', hours: '小時' };
+        return `${ex.durationValue}${unitMap[ex.durationUnit] || ex.durationUnit}`;
+      }
+      if (ex?.distanceValue !== null && ex?.distanceValue !== undefined && ex?.distanceUnit) {
+        const unitMap = { m: '公尺', km: '公里' };
+        return `${ex.distanceValue}${unitMap[ex.distanceUnit] || ex.distanceUnit}`;
+      }
+      if (ex?.bodyPart) return ex.bodyPart;
+      return '查看';
+    }
+
     function renderCategoryOptions() {
       exerciseCategorySelect.innerHTML = categories
         .map(c => `<option value="${c.id}">${c.name}</option>`)
@@ -852,12 +908,14 @@
 
     function createPlanChip(exerciseId, sets, reps, weight, planId, dateKey) {
       const ex = exerciseById(exerciseId);
+      if (!ex) return document.createElement('span');
       const c = categoryById(ex.categoryId);
       const chip = document.createElement('span');
       chip.className = 'chip';
       chip.style.background = c.color;
-      chip.textContent = `${ex.name} ${sets}x${reps}`;
-      chip.title = `${ex.name}｜${sets}組x${reps}下｜${weight}kg`;
+      const plan = { sets, reps, weight };
+      chip.textContent = `${ex.name} ${planChipMeta(plan, ex)}`;
+      chip.title = `${ex.name}｜${exerciseMetaText(ex)}`;
       chip.draggable = true;
       chip.addEventListener('dragstart', (e) => {
         e.stopPropagation();
@@ -894,7 +952,7 @@
           item.innerHTML = `
             <div>
               <strong>${ex.name}</strong> <span class="tag" style="background:${c.color}">${c.name}</span>
-              <div class="plan-meta">${ex.bodyPart}｜${plan.sets}組 x ${plan.reps}下｜${plan.weight}kg</div>
+              <div class="plan-meta">${exerciseMetaText(ex)}｜課表：${planChipMeta(plan, ex)}</div>
             </div>
             <div class="row">
               <button class="btn" data-edit-plan="${plan.id}">編輯</button>
@@ -937,9 +995,20 @@
       const ex = exerciseById(plan.exerciseId);
       planEditTitle.textContent = `編輯課表｜${ex ? ex.name : '動作'}`;
       planEditForm.planId.value = plan.id;
-      planEditForm.sets.value = String(plan.sets);
-      planEditForm.reps.value = String(plan.reps);
-      planEditForm.weight.value = String(plan.weight);
+      planEditForm.exerciseId.value = ex?.id || '';
+      planEditCategorySelect.innerHTML = categories
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+      planEditForm.name.value = ex?.name || '';
+      planEditForm.categoryId.value = ex?.categoryId || categories[0]?.id || '';
+      planEditForm.bodyPart.value = ex?.bodyPart || '';
+      planEditForm.sets.value = plan.sets ?? '';
+      planEditForm.reps.value = plan.reps ?? '';
+      planEditForm.weight.value = plan.weight ?? '';
+      planEditForm.durationValue.value = ex?.durationValue ?? '';
+      planEditForm.durationUnit.value = ex?.durationUnit || '';
+      planEditForm.distanceValue.value = ex?.distanceValue ?? '';
+      planEditForm.distanceUnit.value = ex?.distanceUnit || '';
       planEditModal.classList.add('show');
     }
 
@@ -1140,10 +1209,24 @@
       const id = planEditForm.planId.value;
       const plan = (dayPlans[selectedDateKey] || []).find((p) => p.id === id);
       if (!plan) return;
-      plan.sets = Number(planEditForm.sets.value);
-      plan.reps = Number(planEditForm.reps.value);
-      plan.weight = Number(planEditForm.weight.value);
+      plan.sets = numberOrNull(planEditForm.sets.value) ?? 0;
+      plan.reps = numberOrNull(planEditForm.reps.value) ?? 0;
+      plan.weight = numberOrNull(planEditForm.weight.value) ?? 0;
+
+      const exerciseId = planEditForm.exerciseId.value;
+      const ex = exerciseById(exerciseId);
+      if (ex) {
+        ex.name = String(planEditForm.name.value || ex.name);
+        ex.categoryId = String(planEditForm.categoryId.value || ex.categoryId);
+        ex.bodyPart = String(planEditForm.bodyPart.value || '');
+        ex.durationValue = numberOrNull(planEditForm.durationValue.value);
+        ex.durationUnit = String(planEditForm.durationUnit.value || '');
+        ex.distanceValue = numberOrNull(planEditForm.distanceValue.value);
+        ex.distanceUnit = String(planEditForm.distanceUnit.value || '');
+      }
+
       closePlanEditModal();
+      renderExerciseList();
       refreshAllDayChips();
       updateInlineAnalytics();
       openDrawer(selectedDateKey);
