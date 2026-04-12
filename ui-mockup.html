@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>飛人｜訓練菜單排程系統</title>
-  <link rel="icon" type="image/svg+xml" href="jumpman-logo.svg" />
+  <title>訓練菜單排程系統</title>
+  <link rel="icon" type="image/svg+xml" href="attached-logo.svg" />
   <style>
     :root {
       --bg: #f3f6fb;
@@ -377,7 +377,7 @@
 </head>
 <body>
   <header class="header">
-    <h1><img src="jumpman-logo.svg" alt="飛人logo" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;" /> 訓練菜單排程系統 <img src="jumpman-logo.svg" alt="飛人logo" style="width:20px;height:20px;vertical-align:-4px;margin-left:6px;" /></h1>
+    <h1><img src="attached-logo.svg" alt="logo" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;" /> 訓練菜單排程系統</h1>
     <div class="actions">
       <a class="btn" href="analytics-standalone.html">分析獨立頁</a>
       <button class="btn primary" id="goCurrent">回到本月</button>
@@ -668,7 +668,19 @@
         }));
         exercises.splice(0, exercises.length, ...normalizedExercises);
         Object.keys(dayPlans).forEach((k) => delete dayPlans[k]);
-        Object.assign(dayPlans, data.state.dayPlans || {});
+        const incomingPlans = data.state.dayPlans || {};
+        for (const [dateKey, items] of Object.entries(incomingPlans)) {
+          dayPlans[dateKey] = (items || []).map((p) => ({
+            ...p,
+            name: p.name || "",
+            categoryId: p.categoryId || "",
+            bodyPart: p.bodyPart || "",
+            durationValue: p.durationValue ?? null,
+            durationUnit: p.durationUnit || "",
+            distanceValue: p.distanceValue ?? null,
+            distanceUnit: p.distanceUnit || ""
+          }));
+        }
         setApiStatus(true, '已連線後端');
         if (!useRemote) queueSaveState();
       } catch (err) {
@@ -906,21 +918,31 @@
       queueSaveState();
     }
 
-    function createPlanChip(exerciseId, sets, reps, weight, planId, dateKey) {
-      const ex = exerciseById(exerciseId);
-      if (!ex) return document.createElement('span');
-      const c = categoryById(ex.categoryId);
+    function createPlanChip(plan, dateKey) {
+      const ex = exerciseById(plan.exerciseId);
+      const displayName = plan.name || ex?.name || '未命名';
+      const categoryId = plan.categoryId || ex?.categoryId || '';
+      const c = categoryById(categoryId);
       const chip = document.createElement('span');
       chip.className = 'chip';
-      chip.style.background = c.color;
-      const plan = { sets, reps, weight };
-      chip.textContent = `${ex.name} ${planChipMeta(plan, ex)}`;
-      chip.title = `${ex.name}｜${exerciseMetaText(ex)}`;
+      chip.style.background = c?.color || '#2563eb';
+      const planLikeExercise = {
+        bodyPart: plan.bodyPart || ex?.bodyPart || '',
+        sets: plan.sets,
+        reps: plan.reps,
+        weight: plan.weight,
+        durationValue: plan.durationValue ?? ex?.durationValue ?? null,
+        durationUnit: plan.durationUnit || ex?.durationUnit || '',
+        distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
+        distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
+      };
+      chip.textContent = `${displayName} ${planChipMeta(plan, planLikeExercise)}`;
+      chip.title = `${displayName}｜${exerciseMetaText(planLikeExercise)}`;
       chip.draggable = true;
       chip.addEventListener('dragstart', (e) => {
         e.stopPropagation();
         draggingExerciseId = '';
-        draggingPlan = { planId, dateKey };
+        draggingPlan = { planId: plan.id, dateKey };
       });
       chip.addEventListener('dragend', () => {
         draggingPlan = null;
@@ -931,7 +953,7 @@
     function renderDayCellPlans(dayEl, dateKey) {
       dayEl.querySelectorAll('.chip').forEach(el => el.remove());
       (dayPlans[dateKey] || []).forEach((p) => {
-        dayEl.appendChild(createPlanChip(p.exerciseId, p.sets, p.reps, p.weight, p.id, dateKey));
+        dayEl.appendChild(createPlanChip(p, dateKey));
       });
     }
 
@@ -946,13 +968,25 @@
       } else {
         plans.forEach((plan) => {
           const ex = exerciseById(plan.exerciseId);
-          const c = categoryById(ex.categoryId);
+          const displayName = plan.name || ex?.name || '未命名動作';
+          const categoryId = plan.categoryId || ex?.categoryId || '';
+          const c = categoryById(categoryId) || { name: '未分類', color: '#64748b' };
+          const planLikeExercise = {
+            bodyPart: plan.bodyPart || ex?.bodyPart || '',
+            sets: plan.sets,
+            reps: plan.reps,
+            weight: plan.weight,
+            durationValue: plan.durationValue ?? ex?.durationValue ?? null,
+            durationUnit: plan.durationUnit || ex?.durationUnit || '',
+            distanceValue: plan.distanceValue ?? ex?.distanceValue ?? null,
+            distanceUnit: plan.distanceUnit || ex?.distanceUnit || ''
+          };
           const item = document.createElement('div');
           item.className = 'plan-item';
           item.innerHTML = `
             <div>
-              <strong>${ex.name}</strong> <span class="tag" style="background:${c.color}">${c.name}</span>
-              <div class="plan-meta">${exerciseMetaText(ex)}｜課表：${planChipMeta(plan, ex)}</div>
+              <strong>${displayName}</strong> <span class="tag" style="background:${c.color}">${c.name}</span>
+              <div class="plan-meta">${exerciseMetaText(planLikeExercise)}｜課表：${planChipMeta(plan, planLikeExercise)}</div>
             </div>
             <div class="row">
               <button class="btn" data-edit-plan="${plan.id}">編輯</button>
@@ -993,22 +1027,22 @@
 
     function openPlanEditModal(plan) {
       const ex = exerciseById(plan.exerciseId);
-      planEditTitle.textContent = `編輯課表｜${ex ? ex.name : '動作'}`;
+      planEditTitle.textContent = `編輯課表｜${plan.name || ex?.name || '動作'}`;
       planEditForm.planId.value = plan.id;
-      planEditForm.exerciseId.value = ex?.id || '';
+      planEditForm.exerciseId.value = plan.exerciseId || ex?.id || '';
       planEditCategorySelect.innerHTML = categories
         .map(c => `<option value="${c.id}">${c.name}</option>`)
         .join('');
-      planEditForm.name.value = ex?.name || '';
-      planEditForm.categoryId.value = ex?.categoryId || categories[0]?.id || '';
-      planEditForm.bodyPart.value = ex?.bodyPart || '';
+      planEditForm.name.value = plan.name || ex?.name || '';
+      planEditForm.categoryId.value = plan.categoryId || ex?.categoryId || categories[0]?.id || '';
+      planEditForm.bodyPart.value = plan.bodyPart || ex?.bodyPart || '';
       planEditForm.sets.value = plan.sets ?? '';
       planEditForm.reps.value = plan.reps ?? '';
       planEditForm.weight.value = plan.weight ?? '';
-      planEditForm.durationValue.value = ex?.durationValue ?? '';
-      planEditForm.durationUnit.value = ex?.durationUnit || '';
-      planEditForm.distanceValue.value = ex?.distanceValue ?? '';
-      planEditForm.distanceUnit.value = ex?.distanceUnit || '';
+      planEditForm.durationValue.value = plan.durationValue ?? ex?.durationValue ?? '';
+      planEditForm.durationUnit.value = plan.durationUnit || ex?.durationUnit || '';
+      planEditForm.distanceValue.value = plan.distanceValue ?? ex?.distanceValue ?? '';
+      planEditForm.distanceUnit.value = plan.distanceUnit || ex?.distanceUnit || '';
       planEditModal.classList.add('show');
     }
 
@@ -1095,9 +1129,16 @@
             const newPlan = {
               id: `p${Date.now()}${Math.floor(Math.random() * 1000)}`,
               exerciseId: ex.id,
+              name: ex.name,
+              categoryId: ex.categoryId,
+              bodyPart: ex.bodyPart || '',
               sets: ex.sets ?? 0,
               reps: ex.reps ?? 0,
-              weight: ex.weight ?? 0
+              weight: ex.weight ?? 0,
+              durationValue: ex.durationValue ?? null,
+              durationUnit: ex.durationUnit || '',
+              distanceValue: ex.distanceValue ?? null,
+              distanceUnit: ex.distanceUnit || ''
             };
             if (!dayPlans[dateKey]) dayPlans[dateKey] = [];
             dayPlans[dateKey].push(newPlan);
@@ -1209,24 +1250,18 @@
       const id = planEditForm.planId.value;
       const plan = (dayPlans[selectedDateKey] || []).find((p) => p.id === id);
       if (!plan) return;
+      plan.name = String(planEditForm.name.value || plan.name || '');
+      plan.categoryId = String(planEditForm.categoryId.value || plan.categoryId || '');
+      plan.bodyPart = String(planEditForm.bodyPart.value || '');
       plan.sets = numberOrNull(planEditForm.sets.value) ?? 0;
       plan.reps = numberOrNull(planEditForm.reps.value) ?? 0;
       plan.weight = numberOrNull(planEditForm.weight.value) ?? 0;
-
-      const exerciseId = planEditForm.exerciseId.value;
-      const ex = exerciseById(exerciseId);
-      if (ex) {
-        ex.name = String(planEditForm.name.value || ex.name);
-        ex.categoryId = String(planEditForm.categoryId.value || ex.categoryId);
-        ex.bodyPart = String(planEditForm.bodyPart.value || '');
-        ex.durationValue = numberOrNull(planEditForm.durationValue.value);
-        ex.durationUnit = String(planEditForm.durationUnit.value || '');
-        ex.distanceValue = numberOrNull(planEditForm.distanceValue.value);
-        ex.distanceUnit = String(planEditForm.distanceUnit.value || '');
-      }
+      plan.durationValue = numberOrNull(planEditForm.durationValue.value);
+      plan.durationUnit = String(planEditForm.durationUnit.value || '');
+      plan.distanceValue = numberOrNull(planEditForm.distanceValue.value);
+      plan.distanceUnit = String(planEditForm.distanceUnit.value || '');
 
       closePlanEditModal();
-      renderExerciseList();
       refreshAllDayChips();
       updateInlineAnalytics();
       openDrawer(selectedDateKey);

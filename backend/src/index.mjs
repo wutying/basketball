@@ -44,9 +44,16 @@ const CREATE_STATEMENTS = [
     id TEXT PRIMARY KEY,
     date_key TEXT NOT NULL,
     exercise_id TEXT NOT NULL,
+    exercise_name TEXT,
+    category_id TEXT,
+    body_part TEXT,
     sets INTEGER NOT NULL,
     reps INTEGER NOT NULL,
     weight REAL NOT NULL,
+    duration_value REAL,
+    duration_unit TEXT,
+    distance_value REAL,
+    distance_unit TEXT,
     status TEXT NOT NULL DEFAULT 'planned',
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,8 +73,29 @@ const OPTIONAL_EXERCISE_COLUMNS = [
   "ALTER TABLE exercises ADD COLUMN distance_unit TEXT"
 ];
 
+const OPTIONAL_PLAN_COLUMNS = [
+  "ALTER TABLE plan_items ADD COLUMN exercise_name TEXT",
+  "ALTER TABLE plan_items ADD COLUMN category_id TEXT",
+  "ALTER TABLE plan_items ADD COLUMN body_part TEXT",
+  "ALTER TABLE plan_items ADD COLUMN duration_value REAL",
+  "ALTER TABLE plan_items ADD COLUMN duration_unit TEXT",
+  "ALTER TABLE plan_items ADD COLUMN distance_value REAL",
+  "ALTER TABLE plan_items ADD COLUMN distance_unit TEXT"
+];
+
 async function ensureExerciseColumns(env) {
   for (const sql of OPTIONAL_EXERCISE_COLUMNS) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (err) {
+      const message = String(err?.message || "");
+      if (!message.includes("duplicate column name")) throw err;
+    }
+  }
+}
+
+async function ensurePlanColumns(env) {
+  for (const sql of OPTIONAL_PLAN_COLUMNS) {
     try {
       await env.DB.prepare(sql).run();
     } catch (err) {
@@ -84,6 +112,7 @@ async function ensureSchema(env) {
       await env.DB.prepare(sql).run();
     }
     await ensureExerciseColumns(env);
+    await ensurePlanColumns(env);
   } catch (err) {
     // Recovery path for partially-migrated/broken schemas in existing D1 databases.
     await env.DB.prepare("DROP TABLE IF EXISTS plan_items").run();
@@ -93,6 +122,7 @@ async function ensureSchema(env) {
       await env.DB.prepare(sql).run();
     }
     await ensureExerciseColumns(env);
+    await ensurePlanColumns(env);
   }
   schemaReady = true;
 }
@@ -111,7 +141,8 @@ async function loadState(env) {
      ORDER BY name`
   ).all();
   const plansRs = await env.DB.prepare(
-    `SELECT id, date_key, exercise_id, sets, reps, weight
+    `SELECT id, date_key, exercise_id, exercise_name, category_id, body_part, sets, reps, weight,
+            duration_value, duration_unit, distance_value, distance_unit
      FROM plan_items
      ORDER BY date_key, created_at`
   ).all();
@@ -142,9 +173,16 @@ async function loadState(env) {
     dayPlans[r.date_key].push({
       id: r.id,
       exerciseId: r.exercise_id,
+      name: r.exercise_name || "",
+      categoryId: r.category_id || "",
+      bodyPart: r.body_part || "",
       sets: Number(r.sets),
       reps: Number(r.reps),
-      weight: Number(r.weight)
+      weight: Number(r.weight),
+      durationValue: r.duration_value === null ? null : Number(r.duration_value),
+      durationUnit: r.duration_unit || "",
+      distanceValue: r.distance_value === null ? null : Number(r.distance_value),
+      distanceUnit: r.distance_unit || ""
     });
   }
 
@@ -205,15 +243,23 @@ async function saveState(env, state) {
       if (!validExerciseIds.has(p.exerciseId)) continue;
       await env.DB.prepare(
         `INSERT INTO plan_items
-        (id, date_key, exercise_id, sets, reps, weight, status, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'planned', CURRENT_TIMESTAMP)`
+        (id, date_key, exercise_id, exercise_name, category_id, body_part, sets, reps, weight,
+         duration_value, duration_unit, distance_value, distance_unit, status, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', CURRENT_TIMESTAMP)`
       ).bind(
         p.id,
         dateKey,
         p.exerciseId,
+        p.name || null,
+        p.categoryId || null,
+        p.bodyPart || null,
         Number(p.sets || 0),
         Number(p.reps || 0),
-        Number(p.weight || 0)
+        Number(p.weight || 0),
+        p.durationValue === null || p.durationValue === undefined || p.durationValue === "" ? null : Number(p.durationValue),
+        p.durationUnit || null,
+        p.distanceValue === null || p.distanceValue === undefined || p.distanceValue === "" ? null : Number(p.distanceValue),
+        p.distanceUnit || null
       ).run();
     }
   }
