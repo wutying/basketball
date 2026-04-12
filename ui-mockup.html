@@ -238,6 +238,7 @@
     .day:nth-child(7n) { border-right: none; }
     .day.outside { background: #f8fafc; color: #94a3b8; }
     .day.drop-target { background: var(--hover); outline: 2px dashed var(--primary); outline-offset: -2px; }
+    .exercise.drop-target { outline: 2px dashed var(--primary); background: #eef4ff; }
     .date-label { font-size: 12px; margin-bottom: 4px; }
     .chip {
       display: inline-block;
@@ -774,11 +775,7 @@
               ⠿ ${ex.name}<br />
               <small>${exerciseMetaText(ex)}</small>
             </span>
-            <span class="row">
-              <button type="button" class="mini-btn" data-move-up="${ex.id}" title="上移">↑</button>
-              <button type="button" class="mini-btn" data-move-down="${ex.id}" title="下移">↓</button>
-              <span class="tag" style="background:${category.color}">${category.name}</span>
-            </span>
+            <span class="tag" style="background:${category.color}">${category.name}</span>
           `;
           div.addEventListener('dragstart', () => {
             draggingExerciseId = ex.id;
@@ -793,6 +790,20 @@
           div.addEventListener('click', () => {
             if (draggingExerciseMoved) return;
             openExerciseModalForEdit(ex);
+          });
+          div.addEventListener('dragover', (ev) => {
+            ev.preventDefault();
+            div.classList.add('drop-target');
+          });
+          div.addEventListener('dragleave', () => {
+            div.classList.remove('drop-target');
+          });
+          div.addEventListener('drop', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            div.classList.remove('drop-target');
+            if (!draggingExerciseId || draggingExerciseId === ex.id) return;
+            reorderExercisesByDrop(draggingExerciseId, ex.id);
           });
           details.appendChild(div);
         });
@@ -827,31 +838,14 @@
           queueSaveState();
         });
       });
-
-      exerciseList.querySelectorAll('[data-move-up]').forEach((btn) => {
-        btn.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          moveExercise(btn.dataset.moveUp, -1);
-        });
-      });
-
-      exerciseList.querySelectorAll('[data-move-down]').forEach((btn) => {
-        btn.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          moveExercise(btn.dataset.moveDown, 1);
-        });
-      });
     }
 
-    function moveExercise(exerciseId, direction) {
-      const currentIndex = exercises.findIndex((e) => e.id === exerciseId);
-      if (currentIndex === -1) return;
-      const targetIndex = currentIndex + direction;
-      if (targetIndex < 0 || targetIndex >= exercises.length) return;
-      const [item] = exercises.splice(currentIndex, 1);
-      exercises.splice(targetIndex, 0, item);
+    function reorderExercisesByDrop(fromExerciseId, toExerciseId) {
+      const fromIndex = exercises.findIndex((e) => e.id === fromExerciseId);
+      const toIndex = exercises.findIndex((e) => e.id === toExerciseId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+      const [item] = exercises.splice(fromIndex, 1);
+      exercises.splice(toIndex, 0, item);
       renderExerciseList();
       queueSaveState();
     }
