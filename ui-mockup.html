@@ -238,6 +238,18 @@
     .day:nth-child(7n) { border-right: none; }
     .day.outside { background: #f8fafc; color: #94a3b8; }
     .day.drop-target { background: var(--hover); outline: 2px dashed var(--primary); outline-offset: -2px; }
+    .day.today {
+      background: #eff6ff;
+      box-shadow: inset 0 0 0 2px #2563eb;
+    }
+    .day.today .date-label {
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+    .day.past .chip {
+      opacity: 0.45;
+      filter: saturate(0.55);
+    }
     .exercise.drop-target { outline: 2px dashed var(--primary); background: #eef4ff; }
     .date-label { font-size: 12px; margin-bottom: 4px; }
     .chip {
@@ -580,6 +592,7 @@
     const apiStatus = document.getElementById('apiStatus');
 
     const now = new Date();
+    const todayDateKey = makeDateKey(now.getFullYear(), now.getMonth(), now.getDate());
     let startOffset = 0;
     let endOffset = 4;
     let draggingExerciseId = '';
@@ -1119,6 +1132,11 @@
 
         const dateKey = makeDateKey(y, m, label);
         day.dataset.dateKey = dateKey;
+        if (dateKey === todayDateKey) {
+          day.classList.add('today');
+        } else if (dateKey < todayDateKey) {
+          day.classList.add('past');
+        }
         dateLabel.textContent = label;
         day.appendChild(dateLabel);
         renderDayCellPlans(day, dateKey);
